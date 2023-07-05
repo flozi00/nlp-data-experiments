@@ -81,10 +81,23 @@ def test_add_open_assistant():
                     del list_msgs[i]
                     break
 
+        # now reduce down to final conversations, find the longest chains of message ids
+        for i, conv in enumerate(conversations):
+            for j, conv2 in enumerate(conversations):
+                if i == j:
+                    continue
+                if conv["message_id"] and conv2["message_id"]:
+                    assert conv["message_id"] != conv2["message_id"]
+                    # delete the shorter conversation, if one contains the other
+                    if conv["message_id"] in conv2["message_id"]:
+                        conv["message_id"] = None
+                    if conv2["message_id"] in conv["message_id"]:
+                        conv2["message_id"] = None
+
         conversations = [
             c
             for c in conversations
-            if c["message_id"] and c["text"].count("<|assistant|>") >= 2
+            if c["message_id"] is not None and c["text"].count("<|assistant|>") >= 2
         ]
         all_rows_text.extend(c["text"] for c in conversations)
         all_row_lang.extend(c["lang"] for c in conversations)

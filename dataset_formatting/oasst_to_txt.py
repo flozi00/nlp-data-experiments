@@ -15,9 +15,10 @@ for lang in dslangs:
     ds1 = ds1.filter(lambda example: "```" not in example["conversations"])
     ds1 = ds1.filter(lambda example: "#include" not in example["conversations"])
     ds1 = ds1.filter(lambda example: len(example["conversations"]) < 4096)
-    ds1 = ds1.filter(lambda example: len(example["conversations"]) > 512)
+    ds1 = ds1.remove_columns("lang")
     print(ds1)
-    stepsize = 50
+
+    stepsize = 10000
     for slice in range(0, len(ds1["conversations"]), stepsize):
         txt = "\n***\n".join(ds1["conversations"][slice : slice + stepsize]).replace(
             "\n\n", "\n"
