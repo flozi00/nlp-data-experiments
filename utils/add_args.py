@@ -22,9 +22,6 @@ def add_io_args(
         Parser with added arguments.
     """
     parser.add_argument(
-        "--output", type=str, help="Path to deduplicated dataset output", required=True
-    ),
-    parser.add_argument(
         "--debug",
         action=argparse.BooleanOptionalAction,
         help="Whether to run in debug mode",
@@ -49,12 +46,6 @@ def add_meta_args(
     parser : argparse.ArgumentParser
         Parser with added arguments.
     """
-    parser.add_argument(
-        "--column",
-        type=str,
-        help="""Text column to use for deduplication. Concatenate desired columns beforehand if needed.""",
-        required=True,
-    ),
     parser.add_argument(
         "--batch_size",
         type=int,

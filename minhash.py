@@ -269,7 +269,7 @@ if __name__ == "__main__":  # pragma: no cover
                     "min_length": args.min_length,
                     "permutations": PERMUTATIONS,
                 },
-                input_columns=[args.column],
+                input_columns=["conversations"],
                 remove_columns=ds.column_names,
                 num_proc=os.cpu_count(),
                 with_indices=True,
@@ -319,10 +319,7 @@ if __name__ == "__main__":  # pragma: no cover
 
         with timer("Saving"):
             final_data = final_data.remove_columns(["__cluster__"])
-            final_data.push_to_hub(args.output)
-            if args.debug:
-                with open(os.path.join(args.output, "uf.pkl"), "wb") as f:
-                    pickle.dump(uf, f, protocol=pickle.HIGHEST_PROTOCOL)
+            final_data.push_to_hub("conversations")
 
     PAD = 32
     for k, v in timer.elapsed_times.items():
