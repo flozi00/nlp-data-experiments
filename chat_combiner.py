@@ -40,6 +40,16 @@ def get_chat_dataset() -> datasets.Dataset:
         all_rows.append(msg)
     print("With wikihow:", len(all_rows))
 
+    ds = datasets.load_dataset("musabg/wizard_vicuna_70k_unfiltered_de", split="train")
+    for row in tqdm(ds):
+        chat = ""
+        for entry in row["conversations"]:
+            chat += (
+                f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
+            )
+        all_rows.append(chat)
+    print("With wizard vicuna:", len(all_rows))
+
     ds = datasets.load_dataset(
         "flozi00/openassistant-oasst1-flattened-filtered", split="train"
     ).filter(lambda example: example["lang"] in ["de", "en"])
