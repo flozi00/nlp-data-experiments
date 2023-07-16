@@ -317,13 +317,15 @@ if __name__ == "__main__":  # pragma: no cover
                 desc="Filtering clusters...",
             )
 
-        with timer("Saving"):
-            final_data = final_data.remove_columns(["__cluster__"])
-            final_data.push_to_hub("conversations")
-
     PAD = 32
     for k, v in timer.elapsed_times.items():
         logger.info(f"{k:<{PAD}}: {v:.2f}s")
 
     logger.info(f"{'Before':<{PAD}}: {len(ds)}")
     logger.info(f"{'After':<{PAD}}: {len(final_data)}")
+
+    final_data = final_data.remove_columns(["__cluster__"])
+    from collections import Counter
+
+    print(Counter(final_data["from"]))
+    final_data.push_to_hub("conversations")

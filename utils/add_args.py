@@ -87,13 +87,13 @@ def add_minhash_args(
     parser.add_argument(
         "--num_perm",
         type=int,
-        default=256,
+        default=512,
         help="Number of permutations to use in MinHash",
     )
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.7,
+        default=0.5,
         help="Jaccard similarity threshold to use in MinHashLSH",
     )
     parser.add_argument(
@@ -109,142 +109,4 @@ def add_minhash_args(
         help="Number of rows per band",
     )
 
-    return parser
-
-
-def add_simhash_args(
-    parser: argparse.ArgumentParser,
-) -> argparse.ArgumentParser:  # pragma: no cover
-    """
-    Add SimHash arguments to parser.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser to add arguments to.
-
-    Returns
-    -------
-    parser : argparse.ArgumentParser
-        Parser with added arguments.
-    """
-    parser.add_argument(
-        "--ngram",
-        type=int,
-        default=3,
-        help="""Ngram size to use in SimHash.""",
-    )
-    parser.add_argument("--f", type=int, default=64, help="Simhash bit size"),
-    parser.add_argument(
-        "--bit_diff", type=int, default=3, help="Bit difference to use in SimHash"
-    ),
-    parser.add_argument(
-        "--num_bucket",
-        type=int,
-        default=4,
-        help="Number of buckets to use in SimHash, must be larger than bit_diff",
-    ),
-    return parser
-
-
-def add_sa_args(
-    parser: argparse.ArgumentParser,
-) -> argparse.ArgumentParser:  # pragma: no cover
-    """
-    Add Suffix Array arguments to parser. This adds the following arguments:
-
-    - k: Minimum byte length of a duplicate substring in Suffix Array Deduplication, default 100
-    - strategy: Strategy when there are overlapping duplicate substrings, default "overlapping"
-        overlapping: Merge all overlapping duplicate substrings
-        longest: Only keep the longest duplicate substring
-    - google_repo_path: Path to google-research-deduplication codebase, required
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser to add arguments to.
-
-    Returns
-    -------
-    parser : argparse.ArgumentParser
-        Parser with added arguments.
-    """
-    parser.add_argument(
-        "--k",
-        type=int,
-        default=100,
-        help="Minimum byte length of a duplicate substring in Suffix Array Deduplication",
-    ),
-    parser.add_argument(
-        "--strategy",
-        type=str,
-        default="overlapping",
-        help="Strategy when there are overlapping duplicate substrings",
-        choices=["overlapping", "longest"],
-    )
-    parser.add_argument(
-        "--google_repo_path",
-        type=str,
-        help="Path to google-research-deduplication codebase",
-        required=True,
-    ),
-    return parser
-
-
-def add_bloom_filter_args(
-    parser: argparse.ArgumentParser,
-) -> argparse.ArgumentParser:  # pragma: no cover
-    """
-    Add Bloom Filter arguments to parser.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser to add arguments to.
-
-    Returns
-    -------
-    parser : argparse.ArgumentParser
-        Parser with added arguments.
-    """
-    parser.add_argument(
-        "--error_rate",
-        type=float,
-        default=1e-6,
-        help="Error rate to use in BloomFilter",
-    ),
-    parser.add_argument(
-        "--hash_func",
-        type=str,
-        default="md5",
-        help="Hash function to use in BloomFilter",
-    ),
-    parser.add_argument(
-        "--initial_capacity",
-        type=int,
-        default=100,
-        help="Initial capacity of BloomFilter",
-    ),
-    return parser
-
-
-def add_exact_hash_args(
-    parser: argparse.ArgumentParser,
-) -> argparse.ArgumentParser:  # pragma: no cover
-    """
-    Add Exact Hash arguments to parser.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser to add arguments to.
-
-    Returns
-    -------
-    parser : argparse.ArgumentParser
-        Parser with added arguments.
-    """
-    parser.add_argument(
-        "--hash_func", type=str, default="md5", help="Hash function to use in ExactHash"
-    ),
     return parser
