@@ -23,6 +23,9 @@ import datasets
 import numpy as np
 from scipy.integrate import quad as integrate
 from tqdm import tqdm
+from collections import Counter
+from rich.console import Console
+from rich.table import Table
 
 import logging
 
@@ -325,7 +328,21 @@ if __name__ == "__main__":  # pragma: no cover
     logger.info(f"{'After':<{PAD}}: {len(final_data)}")
 
     final_data = final_data.remove_columns(["__cluster__"])
-    from collections import Counter
 
-    print(Counter(final_data["from"]))
+    stats = Counter(final_data["from"])
+    stats_keys = list(stats.keys())
+    percentage_multiplicator = 100 / len(final_data)
+
+    console = Console()
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Dataset Path")
+    table.add_column("Counts", justify="right")
+    table.add_column("Percentage of dataset", justify="right")
+
+    for k in stats_keys:
+        table.add_row(str(k), str(stats[k]), str(stats[k] * percentage_multiplicator))
+
+    console.print(table)
+
     final_data.push_to_hub("conversations")

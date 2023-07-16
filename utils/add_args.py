@@ -93,7 +93,7 @@ def add_minhash_args(
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.5,
+        default=0.3,
         help="Jaccard similarity threshold to use in MinHashLSH",
     )
     parser.add_argument(
