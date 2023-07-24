@@ -345,4 +345,20 @@ if __name__ == "__main__":  # pragma: no cover
 
     console.print(table)
 
+    stats = Counter(final_data["lang"])
+    stats_keys = list(stats.keys())
+    percentage_multiplicator = 100 / len(final_data)
+
+    console = Console()
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Dataset Path")
+    table.add_column("Counts", justify="right")
+    table.add_column("Percentage of dataset", justify="right")
+
+    for k in stats_keys:
+        table.add_row(str(k), str(stats[k]), str(stats[k] * percentage_multiplicator))
+
+    console.print(table)
+
     final_data.push_to_hub("conversations")
