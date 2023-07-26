@@ -329,36 +329,40 @@ if __name__ == "__main__":  # pragma: no cover
 
     final_data = final_data.remove_columns(["__cluster__"])
 
-    stats = Counter(final_data["from"])
-    stats_keys = list(stats.keys())
     percentage_multiplicator = 100 / len(final_data)
 
-    console = Console()
+    # print stats
+    def print_stats(stats, before):
+        stats_keys = list(stats.keys())
 
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Dataset Path")
-    table.add_column("Counts", justify="right")
-    table.add_column("Percentage of dataset", justify="right")
+        console = Console()
 
-    for k in stats_keys:
-        table.add_row(str(k), str(stats[k]), str(stats[k] * percentage_multiplicator))
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Column")
+        table.add_column("Counts", justify="right")
+        table.add_column("Num removed", justify="right")
+        table.add_column("Percentage of dataset", justify="right")
 
-    console.print(table)
+        for k in stats_keys:
+            table.add_row(
+                str(k),
+                str(stats[k]),
+                str(int(before[k]) - int(stats[k])),
+                str(stats[k] * percentage_multiplicator),
+            )
 
-    stats = Counter(final_data["lang"])
-    stats_keys = list(stats.keys())
-    percentage_multiplicator = 100 / len(final_data)
+        console.print(table)
 
-    console = Console()
+    print_stats(Counter(final_data["from"]), Counter(ds["from"]))
+    print_stats(Counter(final_data["lang"]), Counter(ds["lang"]))
 
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Dataset Path")
-    table.add_column("Counts", justify="right")
-    table.add_column("Percentage of dataset", justify="right")
-
-    for k in stats_keys:
-        table.add_row(str(k), str(stats[k]), str(stats[k] * percentage_multiplicator))
-
-    console.print(table)
+    lengths = [
+        f"{int(len(x.split(' ')) / 1000)+1}000 Words"
+        for x in final_data["conversations"]
+    ]
+    lengths_before = [
+        f"{int(len(x.split(' ')) / 1000)+1}000 Words" for x in ds["conversations"]
+    ]
+    print_stats(Counter(lengths), Counter(lengths_before))
 
     final_data.push_to_hub("conversations")
