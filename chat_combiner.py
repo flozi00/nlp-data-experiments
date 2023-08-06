@@ -42,17 +42,6 @@ def get_chat_dataset() -> datasets.Dataset:
         from_ds.append("sixf0ur/GuanacoDataset-de")
         lang_id.append("de")
 
-    # wikihow, german and english
-    print("0x22almostEvil/multilingual-wikihow-qa-16k")
-    ds = datasets.load_dataset(
-        "0x22almostEvil/multilingual-wikihow-qa-16k", split="train"
-    ).filter(lambda example: "de." in example["SOURCE"] or "en." in example["SOURCE"])
-    for row in ds:
-        msg = f"{PROMPTER}{row['INSTRUCTION']}{END}{BOT}{row['RESPONSE']}{END}"
-        all_rows.append(msg)
-        from_ds.append("0x22almostEvil/multilingual-wikihow-qa-16k")
-        lang_id.append("en" if "en." in row["SOURCE"] else "de")
-
     # wizard vicuna german
     print("musabg/wizard_vicuna_70k_unfiltered_de")
     ds = datasets.load_dataset("musabg/wizard_vicuna_70k_unfiltered_de", split="train")
@@ -76,7 +65,7 @@ def get_chat_dataset() -> datasets.Dataset:
             for entry in row["conversations"]:
                 chat += f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
             all_rows.append(chat)
-            from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
+            from_ds.append(fi)
             lang_id.append("de")
 
     # openorca
@@ -112,6 +101,6 @@ def get_chat_dataset() -> datasets.Dataset:
     )
 
     ds = ds.filter(lambda example: len(example["conversations"]) < 7168 * 3)
-    ds = ds.filter(lambda example: len(example["conversations"]) > 256 * 3)
+    ds = ds.filter(lambda example: len(example["conversations"]) > 512 * 3)
 
     return ds
