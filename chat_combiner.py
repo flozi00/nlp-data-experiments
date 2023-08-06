@@ -66,20 +66,18 @@ def get_chat_dataset() -> datasets.Dataset:
         from_ds.append("musabg/wizard_vicuna_70k_unfiltered_de")
         lang_id.append("de")
 
-    # evol instruct german
-    print("FreedomIntelligence/evol-instruct-deutsch")
-    ds = datasets.load_dataset(
-        "FreedomIntelligence/evol-instruct-deutsch", split="train"
-    )
-    for row in ds:
-        chat = ""
-        for entry in row["conversations"]:
-            chat += (
-                f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
-            )
-        all_rows.append(chat)
-        from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
-        lang_id.append("de")
+    for fi in [
+        "FreedomIntelligence/alpaca-gpt4-deutsch",
+        "FreedomIntelligence/evol-instruct-deutsch",
+    ]:
+        ds = datasets.load_dataset(fi, split="train")
+        for row in ds:
+            chat = ""
+            for entry in row["conversations"]:
+                chat += f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
+            all_rows.append(chat)
+            from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
+            lang_id.append("de")
 
     # openorca
     print("Open-Orca/OpenOrca")
