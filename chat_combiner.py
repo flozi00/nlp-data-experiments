@@ -1,8 +1,24 @@
+from collections import Counter
 import datasets
 
 PROMPTER = "<|prompter|>"
 BOT = "<|assistant|>"
 END = "<|endoftext|>"
+
+dsets = [
+    {
+        "ds-name": "bjoernp/tagesschau-2018-2023",
+        "text": "article",
+    },
+    {
+        "ds-name": "SinclairSchneider/deutschlandfunk_de",
+        "text": "content",
+    },
+    {
+        "ds-name": "SinclairSchneider/bundeszentrale_fuer_politische_bildung",
+        "text": "content",
+    },
+]
 
 
 def get_chat_dataset() -> datasets.Dataset:
@@ -10,7 +26,6 @@ def get_chat_dataset() -> datasets.Dataset:
     from_ds = []
     lang_id = []
 
-    print("argilla/databricks-dolly-15k-curated-multilingual")
     for lang in ["de"]:
         # Dolly multilingual
         ds = datasets.load_dataset(
@@ -24,8 +39,6 @@ def get_chat_dataset() -> datasets.Dataset:
                 from_ds.append("argilla/databricks-dolly-15k-curated-multilingual")
                 lang_id.append(lang)
 
-    # Guanaco
-    print("sixf0ur/GuanacoDataset-de")
     ds = datasets.load_dataset("sixf0ur/GuanacoDataset-de", split="train")
     for row in ds:
         all_rows.append(
@@ -42,8 +55,6 @@ def get_chat_dataset() -> datasets.Dataset:
         from_ds.append("sixf0ur/GuanacoDataset-de")
         lang_id.append("de")
 
-    # wizard vicuna german
-    print("musabg/wizard_vicuna_70k_unfiltered_de")
     ds = datasets.load_dataset("musabg/wizard_vicuna_70k_unfiltered_de", split="train")
     for row in ds:
         chat = ""
@@ -68,22 +79,28 @@ def get_chat_dataset() -> datasets.Dataset:
             from_ds.append(fi)
             lang_id.append("de")
 
-    # openorca
-    print("Open-Orca/OpenOrca")
-    ds = datasets.load_dataset("Open-Orca/OpenOrca", split="train").filter(
-        lambda example: "cot." in example["id"]
-    )
+    ds = datasets.load_dataset("MBZUAI/Bactrian-X", "de", split="train")
     for row in ds:
-        msg = f"{PROMPTER}{row['question']}{END}{BOT}{row['response']}{END}"
-        all_rows.append(msg)
-        from_ds.append("Open-Orca/OpenOrca")
-        lang_id.append("en")
+        chat = f"{PROMPTER}{row['instruction']} {row['input']}{END}{BOT}{row['output']}{END}"
+        all_rows.append(chat)
+        from_ds.append("MBZUAI/Bactrian-X")
+        lang_id.append("de")
 
-    # oasst
-    print("OpenAssistant Datasets")
+    for dset in dsets:
+        ds_tg = datasets.load_dataset(dset["ds-name"], split="train")
+        for ds in ds_tg:
+            all_rows.append(ds[dset["text"]])
+            from_ds.append(dset["ds-name"])
+            lang_id.append("de")
+
     ds = datasets.load_dataset(
         "flozi00/openassistant-oasst1-flattened-filtered", split="train"
-    ).filter(lambda example: example["lang"] in ["de", "en"])
+    ).filter(
+        lambda example: example["lang"]
+        in [
+            "de",
+        ]
+    )
     for x in ds:
         all_rows.append(x["conversations"])
         from_ds.append("flozi00/openassistant-oasst1-flattened-filtered")
@@ -100,7 +117,11 @@ def get_chat_dataset() -> datasets.Dataset:
         {"conversations": all_rows, "from": from_ds, "lang": lang_id}
     )
 
-    ds = ds.filter(lambda example: len(example["conversations"]) < 7168 * 3)
-    ds = ds.filter(lambda example: len(example["conversations"]) > 512 * 3)
+    print(Counter(ds["from"]))
+
+    ds = ds.filter(lambda example: len(example["conversations"]) > 64 * 3)
+    ds = ds.filter(lambda example: len(example["conversations"]) < 8192 * 3)
+
+    print(Counter(ds["from"]))
 
     return ds
