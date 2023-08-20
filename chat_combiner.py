@@ -25,6 +25,7 @@ def get_chat_dataset() -> datasets.Dataset:
     all_rows = []
     from_ds = []
     lang_id = []
+    modes = []
 
     for lang in ["de"]:
         # Dolly multilingual
@@ -38,6 +39,7 @@ def get_chat_dataset() -> datasets.Dataset:
                 )
                 from_ds.append("argilla/databricks-dolly-15k-curated-multilingual")
                 lang_id.append(lang)
+                modes.append("fine-tune")
 
     ds = datasets.load_dataset("sixf0ur/GuanacoDataset-de", split="train")
     for row in ds:
@@ -46,6 +48,7 @@ def get_chat_dataset() -> datasets.Dataset:
         )
         from_ds.append("sixf0ur/GuanacoDataset-de")
         lang_id.append("de")
+        modes.append("fine-tune")
         all_rows.append(
             row["instruction"]
             .replace(" User:", END + PROMPTER)
@@ -54,6 +57,7 @@ def get_chat_dataset() -> datasets.Dataset:
         )
         from_ds.append("sixf0ur/GuanacoDataset-de")
         lang_id.append("de")
+        modes.append("fine-tune")
 
     ds = datasets.load_dataset("musabg/wizard_vicuna_70k_unfiltered_de", split="train")
     for row in ds:
@@ -65,6 +69,7 @@ def get_chat_dataset() -> datasets.Dataset:
         all_rows.append(chat)
         from_ds.append("musabg/wizard_vicuna_70k_unfiltered_de")
         lang_id.append("de")
+        modes.append("fine-tune")
 
     for fi in [
         "FreedomIntelligence/alpaca-gpt4-deutsch",
@@ -78,6 +83,7 @@ def get_chat_dataset() -> datasets.Dataset:
             all_rows.append(chat)
             from_ds.append(fi)
             lang_id.append("de")
+            modes.append("fine-tune")
 
     ds = datasets.load_dataset("MBZUAI/Bactrian-X", "de", split="train")
     for row in ds:
@@ -85,6 +91,7 @@ def get_chat_dataset() -> datasets.Dataset:
         all_rows.append(chat)
         from_ds.append("MBZUAI/Bactrian-X")
         lang_id.append("de")
+        modes.append("fine-tune")
 
     for dset in dsets:
         ds_tg = datasets.load_dataset(dset["ds-name"], split="train")
@@ -92,6 +99,7 @@ def get_chat_dataset() -> datasets.Dataset:
             all_rows.append(ds[dset["text"]])
             from_ds.append(dset["ds-name"])
             lang_id.append("de")
+            modes.append("pretrain")
 
     ds = datasets.load_dataset(
         "flozi00/openassistant-oasst1-flattened-filtered", split="train"
@@ -105,6 +113,7 @@ def get_chat_dataset() -> datasets.Dataset:
         all_rows.append(x["conversations"])
         from_ds.append("flozi00/openassistant-oasst1-flattened-filtered")
         lang_id.append(x["lang"])
+        modes.append("fine-tune")
 
     # oasst translated
     ds = datasets.load_dataset("flozi00/oasst1-en-to-de", split="train")
@@ -112,15 +121,22 @@ def get_chat_dataset() -> datasets.Dataset:
         all_rows.append(x["conversations"])
         from_ds.append("flozi00/oasst1-en-to-de")
         lang_id.append("de")
+        modes.append("fine-tune")
 
     ds = datasets.Dataset.from_dict(
-        {"conversations": all_rows, "from": from_ds, "lang": lang_id}
+        {
+            "conversations": all_rows,
+            "from": from_ds,
+            "lang": lang_id,
+            "mode": modes,
+            "chars": [len(x) for x in all_rows],
+        }
     )
 
     print(Counter(ds["from"]))
 
-    ds = ds.filter(lambda example: len(example["conversations"]) > 64 * 3)
-    ds = ds.filter(lambda example: len(example["conversations"]) < 8192 * 3)
+    ds = ds.filter(lambda example: example["chars"] > 64 * 3)
+    ds = ds.filter(lambda example: example["chars"] < 8192 * 3)
 
     print(Counter(ds["from"]))
 
