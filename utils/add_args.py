@@ -87,13 +87,13 @@ def add_minhash_args(
     parser.add_argument(
         "--num_perm",
         type=int,
-        default=512,
+        default=128,
         help="Number of permutations to use in MinHash",
     )
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.3,
+        default=0.5,
         help="Jaccard similarity threshold to use in MinHashLSH",
     )
     parser.add_argument(

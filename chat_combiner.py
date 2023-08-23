@@ -1,5 +1,6 @@
 from collections import Counter
 import datasets
+import random
 
 PROMPTER = "<|prompter|>"
 BOT = "<|assistant|>"
@@ -108,6 +109,25 @@ def get_chat_dataset() -> datasets.Dataset:
             from_ds.append("MBZUAI/Bactrian-X")
             lang_id.append("de")
             modes.append("fine-tune")
+
+    ds = datasets.load_dataset("deepset/germandpr", split="train")
+    for row in ds:
+        prompt = ""
+        ctxs = []
+        ctxs.extend(row["positive_ctxs"]["text"])
+        ctxs.extend(row["negative_ctxs"]["text"])
+        ctxs.extend(row["hard_negative_ctxs"]["text"])
+        random.shuffle(ctxs)
+        for ctx_id in range(len(ctxs)):
+            ctx = ctxs[ctx_id]
+            prompt += f"passage {ctx_id}: {ctx}\n"
+        prompt += f"question: {row['question']}\n"
+        prompt += f"answer: {row['answers'][0]}\n"
+
+        all_rows.append(prompt)
+        from_ds.append("deepset/germandpr")
+        lang_id.append("de")
+        modes.append("fine-tune")
 
     for lang in ["de", "en"]:
         ds = datasets.load_dataset(
