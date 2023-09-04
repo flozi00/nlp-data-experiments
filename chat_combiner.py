@@ -8,24 +8,26 @@ PROMPTER = "<|prompter|>"
 BOT = "<|assistant|>"
 END = "<|endoftext|>"
 
+
 def print_stats(stats):
-        stats_keys = list(stats.keys())
+    stats_keys = list(stats.keys())
 
-        console = Console()
+    console = Console()
 
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("Column")
-        table.add_column("Counts", justify="right")
-        table.add_column("Percentage of dataset", justify="right")
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Column")
+    table.add_column("Counts", justify="right")
+    table.add_column("Percentage of dataset", justify="right")
 
-        for k in stats_keys:
-            table.add_row(
-                str(k),
-                str(stats[k]),
-                str(stats[k] * percentage_multiplicator),
-            )
+    for k in stats_keys:
+        table.add_row(
+            str(k),
+            str(stats[k]),
+            str(stats[k] * percentage_multiplicator),
+        )
 
-        console.print(table)
+    console.print(table)
+
 
 def map_categories(cat):
     if cat in ["general_qa", "open_qa", "brainstorming", "classification"]:
@@ -34,6 +36,7 @@ def map_categories(cat):
         return "information"
     elif cat in ["creative_writing"]:
         return "writing"
+
 
 def get_chat_dataset() -> datasets.Dataset:
     all_rows = []
@@ -105,15 +108,6 @@ def get_chat_dataset() -> datasets.Dataset:
         lang_id.append("de")
         modes.append(map_categories("closed_qa"))
 
-    ds = datasets.load_dataset(
-        "flozi00/openassistant-oasst1-flattened-filtered", split="train"
-    ).filter(lambda example: example["lang"] == "de")
-    for x in ds:
-        all_rows.append(x["conversations"])
-        from_ds.append("flozi00/openassistant-oasst1-flattened-filtered")
-        lang_id.append("de")
-        modes.append("general")
-
     ds = datasets.Dataset.from_dict(
         {
             "conversations": all_rows,
@@ -132,6 +126,7 @@ def get_chat_dataset() -> datasets.Dataset:
     print(Counter(ds["from"]))
 
     return ds
+
 
 final_data = get_chat_dataset()
 percentage_multiplicator = 100 / len(final_data)
