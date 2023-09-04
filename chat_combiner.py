@@ -8,6 +8,40 @@ PROMPTER = "<|prompter|>"
 BOT = "<|assistant|>"
 END = "<|endoftext|>"
 
+WRITING_PROMPTS = [
+    "Schreibe einen Text über", 
+    "Schreibe einen Text zum Thema", 
+    "Hier ist eine Überschrieft, ich brauche einen Bericht dazu", 
+    "Verfasse einen ausführlichen Text zu der folgenden Zusammenfassung",
+    "Schreibe einen Text über die folgende Zusammenfassung",
+    "Kannst du bitte einen Bericht für das folgende Thema schreiben",
+    "Schreibe einen Text über das folgende Thema",
+    "Hier ist eine Zusammenfassung, schreibe einen Text dazu",
+    "Schreibe einen Text zu der folgenden Überschrift",
+    "Schreibe einen informativen Text zu diesem Titel:",
+    "Schreibe einen informativen Text zu diesem Thema:",
+    "Hier ist eine kurze Zusammenfassung, entwickle bitte einen ausführlichen Text dazu:",
+    "Verfasse einen Text, der sich auf die folgende Überschrift bezieht:",
+    "Kannst du einen ausführlichen Text zu diesem Thema verfassen? Die Überschrift lautet:",
+    "Hier ist eine kurze Übersicht, bitte schreibe einen Text, der diese Zusammenfassung erweitert:",
+    "Schreibe einen Bericht, der sich mit dem folgenden Thema auseinandersetzt:",
+    "Schreibe einen ausführlichen Text zu folgendem Thema:",
+    "Verfasse einen Bericht über die nachstehende Zusammenfassung:",
+    "Hier ist eine Überschrift, bitte erstelle einen Text dazu:",
+    "Kannst du einen informativen Text zu diesem Thema schreiben?",
+    "Schreibe einen Text über die folgende Zusammenfassung:",
+    "Erweitere diese Zusammenfassung zu einem vollständigen Text:",
+    "Bitte verfasse einen Bericht zu diesem speziellen Thema:",
+    "Schreibe einen detaillierten Text zu dieser Überschrift:",
+    "Hier ist eine kurze Zusammenfassung, entwickle bitte einen ausführlichen Text dazu:",
+    "Verfasse einen informativen Text zu dieser Überschrift:",
+    "Schreibe einen Text, der sich auf die folgende Zusammenfassung bezieht:",
+    "Erweitere die nachstehende Zusammenfassung zu einem vollständigen Bericht:",
+    "Kannst du bitte einen ausführlichen Text zu diesem Thema erstellen?",
+    "Schreibe einen Text über das folgende Thema:",
+    "Bitte verfasse einen Bericht über die nachfolgende Überschrift:",
+]
+
 
 def print_stats(stats):
     stats_keys = list(stats.keys())
@@ -34,7 +68,7 @@ def map_categories(cat):
         return "general"
     elif cat in ["closed_qa", "information_extraction", "summarization"]:
         return "information"
-    elif cat in ["creative_writing"]:
+    elif cat in ["creative_writing", "de-summarize"]:
         return "writing"
 
 
@@ -70,6 +104,7 @@ def get_chat_dataset() -> datasets.Dataset:
     for fi in [
         "FreedomIntelligence/alpaca-gpt4-deutsch",
         "FreedomIntelligence/evol-instruct-deutsch",
+        "FreedomIntelligence/sharegpt-deutsch",
     ]:
         ds = datasets.load_dataset(fi, split="train")
         for row in ds:
@@ -108,6 +143,32 @@ def get_chat_dataset() -> datasets.Dataset:
         lang_id.append("de")
         modes.append(map_categories("closed_qa"))
 
+    ds = datasets.load_dataset("snipaid/instruct-snippet-mlsum-v2", split="train")
+    for row in ds:
+        prompt = f"{PROMPTER}{row['instruction']}\n{row['input']}{END}{BOT}{row['output']}{END}"
+        all_rows.append(prompt)
+        from_ds.append("snipaid/instruct-snippet-mlsum-v2")
+        lang_id.append("de")
+        modes.append(map_categories("summarization"))
+
+    ds = datasets.load_dataset("Joemgu/sumstew", split="train").filter(lambda x: x["language"] == "de")
+    for row in ds:
+        prompt = f"{PROMPTER}{row['prompt']}{END}{BOT}{row['target']}{END}"
+        all_rows.append(prompt)
+        from_ds.append("Joemgu/sumstew")
+        lang_id.append("de")
+        modes.append(map_categories("summarization"))
+    
+    ds = datasets.load_dataset("mlsum", "de", split="train")
+    for row in ds:
+        inputs = random.choice([row["title"], row["summary"]])
+        instructions = random.choice(WRITING_PROMPTS)
+        prompt = f"{PROMPTER}{instructions} {inputs}{END}{BOT}{row['text']}{END}"
+        all_rows.append(prompt)
+        from_ds.append("mlsum")
+        lang_id.append("de")
+        modes.append(map_categories("de-summarize"))
+
     ds = datasets.Dataset.from_dict(
         {
             "conversations": all_rows,
@@ -118,13 +179,8 @@ def get_chat_dataset() -> datasets.Dataset:
         }
     )
 
-    print(Counter(ds["from"]))
-
     ds = ds.filter(lambda example: example["chars"] > 64 * 3)
-    ds = ds.filter(lambda example: example["chars"] < 8192 * 3)
-
-    print(Counter(ds["from"]))
-
+    
     return ds
 
 
