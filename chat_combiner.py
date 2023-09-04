@@ -1,25 +1,39 @@
 from collections import Counter
 import datasets
 import random
+from rich.console import Console
+from rich.table import Table
 
 PROMPTER = "<|prompter|>"
 BOT = "<|assistant|>"
 END = "<|endoftext|>"
-SEQ_LENGTH = 4096
 
+def print_stats(stats):
+        stats_keys = list(stats.keys())
 
-def combine_strings(strings):
-    result = []
-    current_string = strings[0]
-    for string in strings[1:]:
-        if len(current_string + string) <= SEQ_LENGTH * 3:
-            current_string += string
-        else:
-            result.append(current_string)
-            current_string = string
-    result.append(current_string)
-    return result
+        console = Console()
 
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Column")
+        table.add_column("Counts", justify="right")
+        table.add_column("Percentage of dataset", justify="right")
+
+        for k in stats_keys:
+            table.add_row(
+                str(k),
+                str(stats[k]),
+                str(stats[k] * percentage_multiplicator),
+            )
+
+        console.print(table)
+
+def map_categories(cat):
+    if cat in ["general_qa", "open_qa", "brainstorming", "classification"]:
+        return "general"
+    elif cat in ["closed_qa", "information_extraction", "summarization"]:
+        return "information"
+    elif cat in ["creative_writing"]:
+        return "writing"
 
 def get_chat_dataset() -> datasets.Dataset:
     all_rows = []
@@ -27,88 +41,50 @@ def get_chat_dataset() -> datasets.Dataset:
     lang_id = []
     modes = []
 
-    for lang in ["de", "en"]:
-        # Dolly multilingual
-        ds = datasets.load_dataset(
-            "argilla/databricks-dolly-15k-curated-multilingual", split=lang
-        )
-        temp_list = []
-        for row in ds:
-            temp_list.append(
-                f'{PROMPTER}{row["context"]}\n{row["instruction"]}{END}{BOT}{row["response"]}{END}'
-            )
-        temp_list = combine_strings(temp_list)
-        for row in temp_list:
-            all_rows.append(row)
-            from_ds.append("argilla/databricks-dolly-15k-curated-multilingual")
-            lang_id.append(lang)
-            modes.append("fine-tune")
-
-    ds = datasets.load_dataset("sixf0ur/GuanacoDataset-de", split="train")
-    temp_list = []
+    ds = datasets.load_dataset(
+        "argilla/databricks-dolly-15k-curated-multilingual", split="de"
+    )
     for row in ds:
-        temp_list.append(
-            f'{PROMPTER}{row["input"].replace("User:", "")}{END}{BOT}{row["output"]}{END}'
+        all_rows.append(
+            f'{PROMPTER}{row["context"]}\n{row["instruction"]}{END}{BOT}{row["response"]}{END}'
         )
-        temp_list.append(
-            row["instruction"]
-            .replace(" User:", END + PROMPTER)
-            .replace("Assistent:", END + BOT)
-            .replace("User:", PROMPTER)
-        )
-    temp_list = combine_strings(temp_list)
-    for row in temp_list:
-        all_rows.append(row)
-        from_ds.append("sixf0ur/GuanacoDataset-de")
+        from_ds.append("argilla/databricks-dolly-15k-curated-multilingual")
         lang_id.append("de")
-        modes.append("fine-tune")
+        modes.append(map_categories(row["category"]))
 
     ds = datasets.load_dataset("musabg/wizard_vicuna_70k_unfiltered_de", split="train")
-    temp_list = []
     for row in ds:
         chat = ""
         for entry in row["conversations"]:
             chat += (
                 f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
             )
-        temp_list.append(chat)
-    temp_list = combine_strings(temp_list)
-    for row in temp_list:
-        all_rows.append(row)
+        all_rows.append(chat)
         from_ds.append("musabg/wizard_vicuna_70k_unfiltered_de")
         lang_id.append("de")
-        modes.append("fine-tune")
+        modes.append("general")
 
     for fi in [
         "FreedomIntelligence/alpaca-gpt4-deutsch",
         "FreedomIntelligence/evol-instruct-deutsch",
     ]:
         ds = datasets.load_dataset(fi, split="train")
-        temp_list = []
         for row in ds:
             chat = ""
             for entry in row["conversations"]:
                 chat += f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
-            temp_list.append(chat)
-        temp_list = combine_strings(temp_list)
-        for row in temp_list:
-            all_rows.append(row)
+            all_rows.append(chat)
             from_ds.append(fi)
             lang_id.append("de")
-            modes.append("fine-tune")
+            modes.append("general")
 
-    for lang in ["de", "en"]:
-        ds = datasets.load_dataset("MBZUAI/Bactrian-X", lang, split="train")
-        temp_list = []
-        for row in ds:
-            chat = f"{PROMPTER}{row['instruction']} {row['input']}{END}{BOT}{row['output']}{END}"
-            temp_list.append(chat)
-        temp_list = combine_strings(temp_list)
-        for row in temp_list:
-            all_rows.append(row)
-            from_ds.append("MBZUAI/Bactrian-X")
-            lang_id.append("de")
-            modes.append("fine-tune")
+    ds = datasets.load_dataset("MBZUAI/Bactrian-X", "de", split="train")
+    for row in ds:
+        chat = f"{PROMPTER}{row['instruction']} {row['input']}{END}{BOT}{row['output']}{END}"
+        all_rows.append(chat)
+        from_ds.append("MBZUAI/Bactrian-X")
+        lang_id.append("de")
+        modes.append("general")
 
     ds = datasets.load_dataset("deepset/germandpr", split="train")
     for row in ds:
@@ -127,33 +103,16 @@ def get_chat_dataset() -> datasets.Dataset:
         all_rows.append(prompt)
         from_ds.append("deepset/germandpr")
         lang_id.append("de")
-        modes.append("fine-tune")
+        modes.append(map_categories("closed_qa"))
 
-    for lang in ["de", "en"]:
-        ds = datasets.load_dataset(
-            "flozi00/openassistant-oasst1-flattened-filtered", split="train"
-        ).filter(lambda example: example["lang"] == lang)
-        temp_list = []
-        for x in ds:
-            temp_list.append(x["conversations"])
-        temp_list = combine_strings(temp_list)
-        for row in temp_list:
-            all_rows.append(row)
-            from_ds.append("flozi00/openassistant-oasst1-flattened-filtered")
-            lang_id.append(lang)
-            modes.append("fine-tune")
-
-    # oasst translated
-    ds = datasets.load_dataset("flozi00/oasst1-en-to-de", split="train")
-    temp_list = []
+    ds = datasets.load_dataset(
+        "flozi00/openassistant-oasst1-flattened-filtered", split="train"
+    ).filter(lambda example: example["lang"] == "de")
     for x in ds:
-        temp_list.append(x["conversations"])
-    temp_list = combine_strings(temp_list)
-    for row in temp_list:
-        all_rows.append(row)
-        from_ds.append("flozi00/oasst1-en-to-de")
+        all_rows.append(x["conversations"])
+        from_ds.append("flozi00/openassistant-oasst1-flattened-filtered")
         lang_id.append("de")
-        modes.append("fine-tune")
+        modes.append("general")
 
     ds = datasets.Dataset.from_dict(
         {
@@ -173,3 +132,10 @@ def get_chat_dataset() -> datasets.Dataset:
     print(Counter(ds["from"]))
 
     return ds
+
+final_data = get_chat_dataset()
+percentage_multiplicator = 100 / len(final_data)
+print_stats(Counter(final_data["from"]))
+print_stats(Counter(final_data["mode"]))
+
+final_data.push_to_hub("conversations")
