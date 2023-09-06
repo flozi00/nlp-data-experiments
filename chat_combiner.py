@@ -10,41 +10,6 @@ PROMPTER = "<|prompter|>"
 BOT = "<|assistant|>"
 END = "<|endoftext|>"
 
-WRITING_PROMPTS = [
-    "Schreibe einen Text über", 
-    "Schreibe einen Text zum Thema", 
-    "Hier ist eine Überschrieft, ich brauche einen Bericht dazu", 
-    "Verfasse einen ausführlichen Text zu der folgenden Zusammenfassung",
-    "Schreibe einen Text über die folgende Zusammenfassung",
-    "Kannst du bitte einen Bericht für das folgende Thema schreiben",
-    "Schreibe einen Text über das folgende Thema",
-    "Hier ist eine Zusammenfassung, schreibe einen Text dazu",
-    "Schreibe einen Text zu der folgenden Überschrift",
-    "Schreibe einen informativen Text zu diesem Titel:",
-    "Schreibe einen informativen Text zu diesem Thema:",
-    "Hier ist eine kurze Zusammenfassung, entwickle bitte einen ausführlichen Text dazu:",
-    "Verfasse einen Text, der sich auf die folgende Überschrift bezieht:",
-    "Kannst du einen ausführlichen Text zu diesem Thema verfassen? Die Überschrift lautet:",
-    "Hier ist eine kurze Übersicht, bitte schreibe einen Text, der diese Zusammenfassung erweitert:",
-    "Schreibe einen Bericht, der sich mit dem folgenden Thema auseinandersetzt:",
-    "Schreibe einen ausführlichen Text zu folgendem Thema:",
-    "Verfasse einen Bericht über die nachstehende Zusammenfassung:",
-    "Hier ist eine Überschrift, bitte erstelle einen Text dazu:",
-    "Kannst du einen informativen Text zu diesem Thema schreiben?",
-    "Schreibe einen Text über die folgende Zusammenfassung:",
-    "Erweitere diese Zusammenfassung zu einem vollständigen Text:",
-    "Bitte verfasse einen Bericht zu diesem speziellen Thema:",
-    "Schreibe einen detaillierten Text zu dieser Überschrift:",
-    "Hier ist eine kurze Zusammenfassung, entwickle bitte einen ausführlichen Text dazu:",
-    "Verfasse einen informativen Text zu dieser Überschrift:",
-    "Schreibe einen Text, der sich auf die folgende Zusammenfassung bezieht:",
-    "Erweitere die nachstehende Zusammenfassung zu einem vollständigen Bericht:",
-    "Kannst du bitte einen ausführlichen Text zu diesem Thema erstellen?",
-    "Schreibe einen Text über das folgende Thema:",
-    "Bitte verfasse einen Bericht über die nachfolgende Überschrift:",
-]
-
-
 def print_stats(stats):
     stats_keys = list(stats.keys())
 
@@ -160,16 +125,6 @@ def get_chat_dataset() -> datasets.Dataset:
         from_ds.append("Joemgu/sumstew")
         lang_id.append("de")
         modes.append(map_categories("summarization"))
-    
-    ds = datasets.load_dataset("mlsum", "de", split="train[:10%]")
-    for row in tqdm(ds, desc="MLSum"):
-        inputs = random.choice([row["title"], row["summary"]])
-        instructions = random.choice(WRITING_PROMPTS)
-        prompt = f"{PROMPTER}{instructions} {inputs}{END}{BOT}{row['text']}{END}"
-        all_rows.append(prompt)
-        from_ds.append("mlsum")
-        lang_id.append("de")
-        modes.append(map_categories("de-summarize"))
 
     ds = datasets.load_dataset("OpenAssistant/oasst_top1_2023-08-25", split="train")
     for row in tqdm(ds, desc="OpenAssistant"):
@@ -179,6 +134,8 @@ def get_chat_dataset() -> datasets.Dataset:
             prompt = prompt.replace("<|im_start|>assistant", BOT)
             prompt = prompt.replace("<|im_end|>", END)
             lang = detect(prompt)
+            if lang != "de":
+                continue
             all_rows.append(prompt)
             from_ds.append("OpenAssistant/oasst_top1_2023-08-25")
             lang_id.append(lang)
