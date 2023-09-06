@@ -31,9 +31,9 @@ def print_stats(stats):
 
 
 def map_categories(cat):
-    if cat in ["general_qa", "open_qa", "brainstorming", "classification"]:
+    if cat in ["general_qa", "open_qa", "brainstorming"]:
         return "general"
-    elif cat in ["closed_qa", "information_extraction", "summarization"]:
+    elif cat in ["closed_qa", "information_extraction", "summarization", "classification"]:
         return "information"
     elif cat in ["creative_writing", "de-summarize"]:
         return "writing"
@@ -56,32 +56,15 @@ def get_chat_dataset() -> datasets.Dataset:
         lang_id.append("de")
         modes.append(map_categories(row["category"]))
 
-    ds = datasets.load_dataset("musabg/wizard_vicuna_70k_unfiltered_de", split="train")
-    for row in tqdm(ds, desc="Wizard of Vicuna"):
+    ds = datasets.load_dataset("FreedomIntelligence/evol-instruct-deutsch", split="train")
+    for row in tqdm(ds, desc="FreedomIntelligence/evol-instruct-deutsch"):
         chat = ""
         for entry in row["conversations"]:
-            chat += (
-                f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
-            )
+            chat += f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
         all_rows.append(chat)
-        from_ds.append("musabg/wizard_vicuna_70k_unfiltered_de")
+        from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
         lang_id.append("de")
         modes.append("general")
-
-    for fi in [
-        "FreedomIntelligence/alpaca-gpt4-deutsch",
-        "FreedomIntelligence/evol-instruct-deutsch",
-        "FreedomIntelligence/sharegpt-deutsch",
-    ]:
-        ds = datasets.load_dataset(fi, split="train")
-        for row in tqdm(ds, desc=fi):
-            chat = ""
-            for entry in row["conversations"]:
-                chat += f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
-            all_rows.append(chat)
-            from_ds.append(fi)
-            lang_id.append("de")
-            modes.append("general")
 
     ds = datasets.load_dataset("MBZUAI/Bactrian-X", "de", split="train")
     for row in tqdm(ds, desc="Bactrian-X"):
@@ -115,14 +98,6 @@ def get_chat_dataset() -> datasets.Dataset:
         prompt = f"{PROMPTER}{row['instruction']}\n{row['input']}{END}{BOT}{row['output']}{END}"
         all_rows.append(prompt)
         from_ds.append("snipaid/instruct-snippet-mlsum-v2")
-        lang_id.append("de")
-        modes.append(map_categories("summarization"))
-
-    ds = datasets.load_dataset("Joemgu/sumstew", split="train").filter(lambda x: x["language"] == "de")
-    for row in tqdm(ds, desc="SumStew"):
-        prompt = f"{PROMPTER}{row['prompt']}{END}{BOT}{row['target']}{END}"
-        all_rows.append(prompt)
-        from_ds.append("Joemgu/sumstew")
         lang_id.append("de")
         modes.append(map_categories("summarization"))
 
