@@ -1,16 +1,15 @@
 from collections import Counter
+from typing import Literal
 import datasets
 import random
 from rich.console import Console
 from rich.table import Table
 from langdetect import detect
 from tqdm import tqdm
+from system_prompts import *
+from TOKENS import *
 
-PROMPTER = "<|prompter|>"
-BOT = "<|assistant|>"
-END = "<|endoftext|>"
-
-def print_stats(stats):
+def print_stats(stats) -> None:
     stats_keys = list(stats.keys())
 
     console = Console()
@@ -30,7 +29,7 @@ def print_stats(stats):
     console.print(table)
 
 
-def map_categories(cat):
+def map_categories(cat) -> Literal['general', 'information', 'writing'] | None:
     if cat in ["general_qa", "open_qa", "brainstorming"]:
         return "general"
     elif cat in ["closed_qa", "information_extraction", "summarization", "classification"]:
@@ -50,7 +49,7 @@ def get_chat_dataset() -> datasets.Dataset:
     )
     for row in tqdm(ds, desc="Databricks Dolly"):
         all_rows.append(
-            f'{PROMPTER}{row["context"]}\n{row["instruction"]}{END}{BOT}{row["response"]}{END}'
+            f'{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER}{row["context"]}\n{row["instruction"]}{END}{BOT}{row["response"]}{END}'
         )
         from_ds.append("argilla/databricks-dolly-15k-curated-multilingual")
         lang_id.append("de")
@@ -60,7 +59,7 @@ def get_chat_dataset() -> datasets.Dataset:
     for row in tqdm(ds, desc="FreedomIntelligence/evol-instruct-deutsch"):
         chat = ""
         for entry in row["conversations"]:
-            chat += f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
+            chat += f"{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
         all_rows.append(chat)
         from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
         lang_id.append("de")
@@ -68,7 +67,7 @@ def get_chat_dataset() -> datasets.Dataset:
 
     ds = datasets.load_dataset("MBZUAI/Bactrian-X", "de", split="train")
     for row in tqdm(ds, desc="Bactrian-X"):
-        chat = f"{PROMPTER}{row['instruction']} {row['input']}{END}{BOT}{row['output']}{END}"
+        chat = f"{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER}{row['instruction']} {row['input']}{END}{BOT}{row['output']}{END}"
         all_rows.append(chat)
         from_ds.append("MBZUAI/Bactrian-X")
         lang_id.append("de")
@@ -76,7 +75,7 @@ def get_chat_dataset() -> datasets.Dataset:
 
     ds = datasets.load_dataset("deepset/germandpr", split="train")
     for row in tqdm(ds, desc="German DPR"):
-        prompt = ""
+        prompt = f"{SYSTEM}{random.choice(short_qa_system_prompts)}{END}"
         ctxs = []
         ctxs.extend(row["positive_ctxs"]["text"])
         ctxs.extend(row["negative_ctxs"]["text"])
@@ -95,7 +94,7 @@ def get_chat_dataset() -> datasets.Dataset:
 
     ds = datasets.load_dataset("snipaid/instruct-snippet-mlsum-v2", split="train")
     for row in tqdm(ds, desc="Instruct Snippet MLSum"):
-        prompt = f"{PROMPTER}{row['instruction']}\n{row['input']}{END}{BOT}{row['output']}{END}"
+        prompt = f"{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER}{row['instruction']}\n{row['input']}{END}{BOT}{row['output']}{END}"
         all_rows.append(prompt)
         from_ds.append("snipaid/instruct-snippet-mlsum-v2")
         lang_id.append("de")
@@ -111,6 +110,7 @@ def get_chat_dataset() -> datasets.Dataset:
             lang = detect(prompt)
             if lang != "de":
                 continue
+            prompt = f"{SYSTEM}{random.choice(oa_system_prompts)}{END}{prompt}"
             all_rows.append(prompt)
             from_ds.append("OpenAssistant/oasst_top1_2023-08-25")
             lang_id.append(lang)
@@ -139,4 +139,4 @@ print_stats(Counter(final_data["from"]))
 print_stats(Counter(final_data["mode"]))
 print_stats(Counter(final_data["lang"]))
 
-final_data.push_to_hub("conversations")
+final_data.push_to_hub("conversations", max_shard_size="1GB")
