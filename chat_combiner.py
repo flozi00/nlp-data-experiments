@@ -6,7 +6,6 @@ from rich.console import Console
 from rich.table import Table
 from langdetect import detect
 from tqdm import tqdm
-from system_prompts import *
 from TOKENS import *
 import torch
 from transformers import pipeline
@@ -62,7 +61,7 @@ def get_chat_dataset() -> datasets.Dataset:
     )
     for row in tqdm(ds, desc="Databricks Dolly"):
         all_rows.append(
-            f'{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER}{row["context"]}\n{row["instruction"]}{END}{BOT}{row["response"]}{END}'
+            f'{PROMPTER}{row["context"]}\n{row["instruction"]}{END}{BOT}{row["response"]}{END}'
         )
         from_ds.append("argilla/databricks-dolly-15k-curated-multilingual")
         lang_id.append("de")
@@ -75,7 +74,7 @@ def get_chat_dataset() -> datasets.Dataset:
         label = get_dolly_label(label)
         label = map_categories(label)
         for entry in row["conversations"]:
-            chat += f"{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
+            chat += f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
         all_rows.append(chat)
         from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
         lang_id.append("de")
@@ -86,7 +85,7 @@ def get_chat_dataset() -> datasets.Dataset:
     for row in tqdm(ds, desc="Bactrian-X"):
         label = get_dolly_label(row["instruction"])
         label = map_categories(label)
-        chat = f"{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER}{row['instruction']} {row['input']}{END}{BOT}{row['output']}{END}"
+        chat = f"{PROMPTER}{row['instruction']} {row['input']}{END}{BOT}{row['output']}{END}"
         all_rows.append(chat)
         from_ds.append("MBZUAI/Bactrian-X")
         lang_id.append("de")
@@ -94,7 +93,7 @@ def get_chat_dataset() -> datasets.Dataset:
 
     ds = datasets.load_dataset("deepset/germandpr", split="train")
     for row in tqdm(ds, desc="German DPR"):
-        prompt = f"{SYSTEM}{random.choice(short_qa_system_prompts)}{END}"
+        prompt = f""
         ctxs = []
         ctxs.extend(row["positive_ctxs"]["text"])
         ctxs.extend(row["negative_ctxs"]["text"])
@@ -113,7 +112,7 @@ def get_chat_dataset() -> datasets.Dataset:
 
     ds = datasets.load_dataset("snipaid/instruct-snippet-mlsum-v2", split="train")
     for row in tqdm(ds, desc="Instruct Snippet MLSum"):
-        prompt = f"{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER}{row['instruction']}\n{row['input']}{END}{BOT}{row['output']}{END}"
+        prompt = f"{PROMPTER}{row['instruction']}\n{row['input']}{END}{BOT}{row['output']}{END}"
         all_rows.append(prompt)
         from_ds.append("snipaid/instruct-snippet-mlsum-v2")
         lang_id.append("de")
@@ -129,7 +128,6 @@ def get_chat_dataset() -> datasets.Dataset:
             lang = detect(prompt)
             if lang != "de":
                 continue
-            prompt = f"{SYSTEM}{random.choice(oa_system_prompts)}{END}{prompt}"
             all_rows.append(prompt)
             from_ds.append("OpenAssistant/oasst_top1_2023-08-25")
             lang_id.append(lang)
