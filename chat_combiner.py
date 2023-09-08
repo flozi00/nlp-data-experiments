@@ -8,6 +8,19 @@ from langdetect import detect
 from tqdm import tqdm
 from system_prompts import *
 from TOKENS import *
+import torch
+from transformers import pipeline
+from optimum.bettertransformer import BetterTransformer
+from filecache import filecache
+
+
+
+pipe = pipeline("text2text-generation", model="flozi00/t5-small-llm-tasks", device=0, torch_dtype=torch.float16)
+pipe.model = BetterTransformer.transform(pipe.model)
+
+@filecache(24 * 60 * 60)
+def get_dolly_label(prompt: str) -> str:
+    return pipe(f"{PROMPTER}{prompt}{END}", max_new_tokens = 5, do_sample=False)[0]["generated_text"]
 
 def print_stats(stats) -> None:
     stats_keys = list(stats.keys())
@@ -58,20 +71,26 @@ def get_chat_dataset() -> datasets.Dataset:
     ds = datasets.load_dataset("FreedomIntelligence/evol-instruct-deutsch", split="train")
     for row in tqdm(ds, desc="FreedomIntelligence/evol-instruct-deutsch"):
         chat = ""
+        label = row["conversations"][0]["value"]
+        label = get_dolly_label(label)
+        label = map_categories(label)
         for entry in row["conversations"]:
             chat += f"{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
         all_rows.append(chat)
         from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
         lang_id.append("de")
-        modes.append("general")
+        modes.append(label)
 
     ds = datasets.load_dataset("MBZUAI/Bactrian-X", "de", split="train")
+    
     for row in tqdm(ds, desc="Bactrian-X"):
+        label = get_dolly_label(row["instruction"])
+        label = map_categories(label)
         chat = f"{SYSTEM}{random.choice(general_system_prompts)}{END}{PROMPTER}{row['instruction']} {row['input']}{END}{BOT}{row['output']}{END}"
         all_rows.append(chat)
         from_ds.append("MBZUAI/Bactrian-X")
         lang_id.append("de")
-        modes.append("general")
+        modes.append(label)
 
     ds = datasets.load_dataset("deepset/germandpr", split="train")
     for row in tqdm(ds, desc="German DPR"):

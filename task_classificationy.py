@@ -6,7 +6,7 @@ modes = []
 all_rows = []
 
 ds = datasets.load_dataset(
-    "argilla/databricks-dolly-15k-curated-multilingual", split="de"
+    "argilla/databricks-dolly-15k-curated-multilingual", split="de+en"
 )
 for row in tqdm(ds, desc="Databricks Dolly"):
     all_rows.append(
