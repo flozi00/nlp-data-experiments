@@ -19,6 +19,11 @@ pipe = pipeline(
 )
 pipe.model = BetterTransformer.transform(pipe.model)
 
+from lingua import Language, LanguageDetectorBuilder
+
+languages = [Language.ENGLISH, Language.GERMAN]
+detector = LanguageDetectorBuilder.from_languages(*languages).build()
+
 
 @filecache(7 * 24 * 60 * 60)
 def get_dolly_label(prompt: str) -> str:
@@ -58,8 +63,15 @@ def process_3_part_ds(
     ds = []
     labels = []
     for row in tqdm(data):
-        ds.append(f"{PROMPTER}{row[first]}\n{row[second]}{END}{BOT}{row[output]}{END}")
-        labels.append(get_dolly_label(f"{row[first]}\n{row[second]}"))
+        if (
+            detector.detect_language_of(row[first] + row[second])
+            == detector.detect_language_of(row[output])
+            == Language.GERMAN
+        ):
+            ds.append(
+                f"{PROMPTER}{row[first]}\n{row[second]}{END}{BOT}{row[output]}{END}"
+            )
+            labels.append(get_dolly_label(f"{row[first]}\n{row[second]}"))
 
     return ds, labels
 
@@ -118,9 +130,14 @@ def get_chat_dataset() -> datasets.Dataset:
             chat += (
                 f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
             )
-        all_rows.append(chat)
-        all_labels.append(get_dolly_label(row["conversations"][0]["value"]))
-        from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
+        if (
+            detector.detect_language_of(row["conversations"][0]["value"])
+            == detector.detect_language_of(row["conversations"][1]["value"])
+            == Language.GERMAN
+        ):
+            all_rows.append(chat)
+            all_labels.append(get_dolly_label(row["conversations"][0]["value"]))
+            from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
 
     ds = datasets.load_dataset("OpenAssistant/oasst_top1_2023-08-25", split="train")
     for row in tqdm(ds, desc="OpenAssistant"):
@@ -129,8 +146,7 @@ def get_chat_dataset() -> datasets.Dataset:
             prompt = prompt.replace("<|im_start|>user", PROMPTER)
             prompt = prompt.replace("<|im_start|>assistant", BOT)
             prompt = prompt.replace("<|im_end|>", END)
-            lang = detect(prompt)
-            if lang != "de":
+            if detector.detect_language_of(prompt) != Language.GERMAN:
                 continue
             all_rows.append(prompt)
             all_labels.append("chat")
