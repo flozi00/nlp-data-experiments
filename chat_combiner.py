@@ -11,7 +11,6 @@ from optimum.bettertransformer import BetterTransformer
 import torch
 from filecache import filecache
 
-
 pipe = pipeline(
     "text2text-generation",
     model="flozi00/t5-small-llm-tasks",
@@ -21,7 +20,7 @@ pipe = pipeline(
 pipe.model = BetterTransformer.transform(pipe.model)
 
 
-@filecache(24 * 60 * 60)
+@filecache(7 * 24 * 60 * 60)
 def get_dolly_label(prompt: str) -> str:
     return pipe(
         f"Labels: closed_qa, classification, open_qa, information_extraction, brainstorming, general_qa, summarization, creative_writing </s> Input: {prompt}",
@@ -134,7 +133,7 @@ def get_chat_dataset() -> datasets.Dataset:
             if lang != "de":
                 continue
             all_rows.append(prompt)
-            all_labels.append(get_dolly_label(prompt))
+            all_labels.append("chat")
             from_ds.append("OpenAssistant/oasst_top1_2023-08-25")
         except Exception as e:
             print(e)
