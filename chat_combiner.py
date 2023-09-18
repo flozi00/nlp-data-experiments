@@ -1,11 +1,33 @@
 from collections import Counter
 import datasets
-import random
 from rich.console import Console
 from rich.table import Table
 from langdetect import detect
 from tqdm import tqdm
 from TOKENS import *
+
+from transformers import pipeline
+from optimum.bettertransformer import BetterTransformer
+import torch
+from filecache import filecache
+
+
+pipe = pipeline(
+    "text2text-generation",
+    model="flozi00/t5-small-llm-tasks",
+    device=0,
+    torch_dtype=torch.float16,
+)
+pipe.model = BetterTransformer.transform(pipe.model)
+
+
+@filecache(24 * 60 * 60)
+def get_dolly_label(prompt: str) -> str:
+    return pipe(
+        f"Labels: closed_qa, classification, open_qa, information_extraction, brainstorming, general_qa, summarization, creative_writing </s> Input: {prompt}",
+        max_new_tokens=5,
+        do_sample=False,
+    )[0]["generated_text"]
 
 
 def print_stats(stats) -> None:
@@ -35,14 +57,17 @@ def process_3_part_ds(
     data,
 ):
     ds = []
+    labels = []
     for row in tqdm(data):
         ds.append(f"{PROMPTER}{row[first]}\n{row[second]}{END}{BOT}{row[output]}{END}")
+        labels.append(get_dolly_label(f"{row[first]}\n{row[second]}"))
 
-    return ds
+    return ds, labels
 
 
 def get_chat_dataset() -> datasets.Dataset:
     all_rows = []
+    all_labels = []
     from_ds = []
 
     """
@@ -53,13 +78,14 @@ def get_chat_dataset() -> datasets.Dataset:
     ds = datasets.load_dataset(
         "argilla/databricks-dolly-15k-curated-multilingual", split="de"
     )
-    ds_processed = process_3_part_ds(
+    ds_processed, labels_processed = process_3_part_ds(
         "context",
         "instruction",
         "response",
         ds,
     )
     all_rows.extend(ds_processed)
+    all_labels.extend(labels_processed)
     from_ds.extend(
         ["argilla/databricks-dolly-15k-curated-multilingual"] * len(ds_processed)
     )
@@ -71,13 +97,14 @@ def get_chat_dataset() -> datasets.Dataset:
     resulting in 3.4M instruction-response pairs in 52 languages (52 languages x 67k instances = 3.4M instances).
     """
     ds = datasets.load_dataset("MBZUAI/Bactrian-X", "de", split="train")
-    ds_processed = process_3_part_ds(
+    ds_processed, labels_processed = process_3_part_ds(
         "instruction",
         "input",
         "output",
         ds,
     )
     all_rows.extend(ds_processed)
+    all_labels.extend(labels_processed)
     from_ds.extend(["MBZUAI/Bactrian-X"] * len(ds_processed))
 
     """
@@ -93,6 +120,7 @@ def get_chat_dataset() -> datasets.Dataset:
                 f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
             )
         all_rows.append(chat)
+        all_labels.append(get_dolly_label(row["conversations"][0]["value"]))
         from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
 
     ds = datasets.load_dataset("OpenAssistant/oasst_top1_2023-08-25", split="train")
@@ -106,6 +134,7 @@ def get_chat_dataset() -> datasets.Dataset:
             if lang != "de":
                 continue
             all_rows.append(prompt)
+            all_labels.append(get_dolly_label(prompt))
             from_ds.append("OpenAssistant/oasst_top1_2023-08-25")
         except Exception as e:
             print(e)
@@ -115,6 +144,7 @@ def get_chat_dataset() -> datasets.Dataset:
             "conversations": all_rows,
             "from": from_ds,
             "chars": [len(x) for x in all_rows],
+            "labels": all_labels,
         }
     )
 
@@ -126,5 +156,6 @@ def get_chat_dataset() -> datasets.Dataset:
 final_data = get_chat_dataset()
 percentage_multiplicator = 100 / len(final_data)
 print_stats(Counter(final_data["from"]))
+print_stats(Counter(final_data["labels"]))
 
 final_data.push_to_hub("conversations", max_shard_size="1GB")
