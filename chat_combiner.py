@@ -1,8 +1,4 @@
-from collections import Counter
 import datasets
-from rich.console import Console
-from rich.table import Table
-from langdetect import detect
 from tqdm import tqdm
 from TOKENS import *
 
@@ -10,6 +6,16 @@ from transformers import pipeline
 from optimum.bettertransformer import BetterTransformer
 import torch
 from filecache import filecache
+from langdetect import detect
+
+
+@filecache(7 * 24 * 60 * 60)
+def detector(text: str) -> str:
+    try:
+        return detect(text)
+    except:
+        return None
+
 
 pipe = pipeline(
     "text2text-generation",
@@ -18,11 +24,6 @@ pipe = pipeline(
     torch_dtype=torch.float16,
 )
 pipe.model = BetterTransformer.transform(pipe.model)
-
-from lingua import Language, LanguageDetectorBuilder
-
-languages = [Language.ENGLISH, Language.GERMAN]
-detector = LanguageDetectorBuilder.from_languages(*languages).build()
 
 
 @filecache(7 * 24 * 60 * 60)
@@ -34,26 +35,6 @@ def get_dolly_label(prompt: str) -> str:
     )[0]["generated_text"]
 
 
-def print_stats(stats) -> None:
-    stats_keys = list(stats.keys())
-
-    console = Console()
-
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Column")
-    table.add_column("Counts", justify="right")
-    table.add_column("Percentage of dataset", justify="right")
-
-    for k in stats_keys:
-        table.add_row(
-            str(k),
-            str(stats[k]),
-            str(stats[k] * percentage_multiplicator),
-        )
-
-    console.print(table)
-
-
 def process_3_part_ds(
     first,
     second,
@@ -63,15 +44,14 @@ def process_3_part_ds(
     ds = []
     labels = []
     for row in tqdm(data):
-        if (
-            detector.detect_language_of(row[first] + row[second])
-            == detector.detect_language_of(row[output])
-            == Language.GERMAN
-        ):
+        if detector(row[first] + row[second]) == detector(row[output]) == "de":
             ds.append(
                 f"{PROMPTER}{row[first]}\n{row[second]}{END}{BOT}{row[output]}{END}"
             )
-            labels.append(get_dolly_label(f"{row[first]}\n{row[second]}"))
+            try:
+                labels.append(row["category"])
+            except:
+                labels.append(get_dolly_label(f"{row[first]}\n{row[second]}"))
 
     return ds, labels
 
@@ -131,9 +111,9 @@ def get_chat_dataset() -> datasets.Dataset:
                 f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
             )
         if (
-            detector.detect_language_of(row["conversations"][0]["value"])
-            == detector.detect_language_of(row["conversations"][1]["value"])
-            == Language.GERMAN
+            detector(row["conversations"][0]["value"])
+            == detector(row["conversations"][1]["value"])
+            == "de"
         ):
             all_rows.append(chat)
             all_labels.append(get_dolly_label(row["conversations"][0]["value"]))
@@ -146,7 +126,7 @@ def get_chat_dataset() -> datasets.Dataset:
             prompt = prompt.replace("<|im_start|>user", PROMPTER)
             prompt = prompt.replace("<|im_start|>assistant", BOT)
             prompt = prompt.replace("<|im_end|>", END)
-            if detector.detect_language_of(prompt) != Language.GERMAN:
+            if detector(prompt) != "de":
                 continue
             all_rows.append(prompt)
             all_labels.append("chat")
@@ -158,19 +138,12 @@ def get_chat_dataset() -> datasets.Dataset:
         {
             "conversations": all_rows,
             "from": from_ds,
-            "chars": [len(x) for x in all_rows],
             "labels": all_labels,
         }
     )
-
-    ds = ds.filter(lambda example: example["chars"] > 64 * 3)
 
     return ds
 
 
 final_data = get_chat_dataset()
-percentage_multiplicator = 100 / len(final_data)
-print_stats(Counter(final_data["from"]))
-print_stats(Counter(final_data["labels"]))
-
 final_data.push_to_hub("conversations", max_shard_size="1GB")
