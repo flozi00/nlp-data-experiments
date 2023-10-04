@@ -37,7 +37,7 @@ Antwortmöglichkeiten:
 {mc_answer3}
 {mc_answer4}
 Text: {flores_passage}
-Frage: {question}{END}{BOT}{correct_answer}"""
+Frage: {question}{END}{BOT}{correct_answer}{END}"""
 
         all_rows.append(PROMPT)
         all_labels.append("closed_qa")

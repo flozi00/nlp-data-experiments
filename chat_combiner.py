@@ -5,8 +5,9 @@ from datas.dolly import dolly
 from datas.evolinstruct import evol
 from datas.openassistant import oa
 from datas.belebele import belebele
+from datas.germandpr import germandpr
 
-sets = [dolly, bactrian, evol, oa, belebele]
+sets = [dolly, bactrian, evol, oa, belebele, germandpr]
 
 
 def get_chat_dataset() -> datasets.Dataset:
