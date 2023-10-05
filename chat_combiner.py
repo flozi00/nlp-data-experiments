@@ -33,4 +33,8 @@ def get_chat_dataset() -> datasets.Dataset:
 
 
 final_data = get_chat_dataset()
+labels = final_data.unique("labels")
+labeling = datasets.ClassLabel(names=labels)
+final_data.cast_column("labels", labeling)
+
 final_data.push_to_hub("conversations", max_shard_size="1GB")
