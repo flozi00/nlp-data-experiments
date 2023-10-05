@@ -29,7 +29,7 @@ def dolly():
 
     labels = ds.unique("category")
     for row in ds:
-        prompt = f"""{SYSTEM}Klassifiziere die folgende Anweisung als eine der folgenden Kategorien: {", ".join(labels)}
+        prompt = f"""{SYSTEM}Klassifiziere die folgende Anweisung als eine der folgenden Kategorien: {", ".join(labels)}{END} 
 {PROMPTER}{row["context"]}\n{row["instruction"]}{END}{BOT}{row["category"]}{END}"""
         all_rows.append(prompt)
         all_labels.append("classification")
