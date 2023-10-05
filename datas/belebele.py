@@ -29,7 +29,7 @@ def belebele():
         elif "4" in entry["correct_answer_num"]:
             correct_answer = mc_answer4
 
-        PROMPT = f"""{PROMPTER}Gegeben ist ein Text in deutscher Sprache und eine Frage auf Deutsch.
+        PROMPT = f"""{PROMPTER}Gegeben ist ein Text und eine Frage.
 Die Antwort auf die Frage ist eine der vier vorgegebenen Antworten.
 Antwortmöglichkeiten:
 {mc_answer1}
