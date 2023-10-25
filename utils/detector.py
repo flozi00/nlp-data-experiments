@@ -15,8 +15,8 @@ def detector(text: str) -> str:
 
 
 pipe = pipeline(
-    "text2text-generation",
-    model="flozi00/t5-small-llm-tasks",
+    "text-classification",
+    model="flozi00/multilingual-e5-large-llm-tasks",
     device=0,
     torch_dtype=torch.float16,
 )
@@ -25,8 +25,4 @@ pipe.model = BetterTransformer.transform(pipe.model)
 
 @filecache(7 * 24 * 60 * 60)
 def get_dolly_label(prompt: str) -> str:
-    return pipe(
-        f"Labels: closed_qa, classification, open_qa, information_extraction, brainstorming, general_qa, summarization, creative_writing </s> Input: {prompt}",
-        max_new_tokens=5,
-        do_sample=False,
-    )[0]["generated_text"]
+    return pipe(prompt)[0]["label"].strip()
