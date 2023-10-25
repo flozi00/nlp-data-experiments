@@ -1,7 +1,8 @@
 from tqdm import tqdm
 from TOKENS import BOT, PROMPTER, END
 
-from utils.detector import detector, get_dolly_label
+from utils.detector import detector
+from utils.classifier import get_dolly_label
 
 
 def process_3_part_ds(
@@ -19,7 +20,7 @@ def process_3_part_ds(
             )
             try:
                 labels.append(row["category"])
-            except:
+            except Exception:
                 labels.append(get_dolly_label(f"{row[first]}\n{row[second]}"))
 
     return ds, labels

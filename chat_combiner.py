@@ -6,6 +6,7 @@ from datas.evolinstruct import evol
 from datas.openassistant import oa
 from datas.belebele import belebele
 from datas.germandpr import germandpr
+from utils.uncensore_phrases import PHRASES
 
 sets = [dolly, bactrian, evol, oa, belebele, germandpr]
 
@@ -33,8 +34,16 @@ def get_chat_dataset() -> datasets.Dataset:
 
 
 final_data = get_chat_dataset()
-labels = final_data.unique("labels")
-labeling = datasets.ClassLabel(names=labels)
-final_data.cast_column("labels", labeling)
+
+print(final_data)
+
+for phrase in PHRASES:
+    final_data = final_data.filter(
+        lambda x: phrase.lower() not in x["conversations"].lower()
+    )
+
+final_data = final_data.filter(lambda x: x["labels"] != "error")
+
+print(final_data)
 
 final_data.push_to_hub("conversations", max_shard_size="1GB")
