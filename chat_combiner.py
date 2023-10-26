@@ -46,4 +46,13 @@ final_data = final_data.filter(lambda x: x["labels"] != "error")
 
 print(final_data)
 
+final_data = get_chat_dataset()
+labels = final_data.unique("labels")
+labeling = datasets.ClassLabel(names=labels)
+final_data.cast_column("labels", labeling)
+
+from_labels = final_data.unique("from")
+labeling = datasets.ClassLabel(names=from_labels)
+final_data.cast_column("from", labeling)
+
 final_data.push_to_hub("conversations", max_shard_size="1GB")

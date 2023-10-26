@@ -39,9 +39,12 @@ def germandpr():
 
         ctx_string = "\n".join(ctx)
 
+        ctx = [f"Frage: {question}", f"Text: {ctx_string}"]
+        random.shuffle(ctx)
+        ctx_string = "\n\n".join(ctx)
+
         PROMPT = f"""{SYSTEM}{random.choice(SYSTEM_PROMPTS)}{END}
-{PROMPTER}Frage: {question}
-Text: {ctx_string}{END}{BOT}{answer}{END}"""
+{PROMPTER}{ctx_string}{END}{BOT}{answer}{END}"""
 
         all_rows.append(PROMPT)
         all_labels.append("closed_qa")
