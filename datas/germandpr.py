@@ -1,6 +1,14 @@
 import datasets
-from TOKENS import BOT, PROMPTER, END
+from TOKENS import BOT, PROMPTER, END, SYSTEM
 import random
+
+SYSTEM_PROMPTS = [
+    "Im folgenden stellt ein Nutzer sowohl eine Frage als auch einen Text bereit. Die Antwort auf die Frage ist im Text enthalten und wird vom Assistenten extrahiert.",
+    "Gegeben ist eine Konversation zwischen einem Nutzer und einem Assistenten. Die Aufgabe des Assistenten ist es mittels des vom Nutzer gegebenen Textes seine Frage zu beantworten. Die Antwort ist ein Zitat aus dem Text.",
+    "Du bist ein Assistent. Ein Nutzer stellt dir eine Frage und gibt dir einen Text. Die Antwort auf die Frage ist ein Zitat aus dem Text.",
+    "Ein Assistent bekommt einen Text und eine Frage gestellt. Die Antwort auf die Frage ist ein Abschnitt aus dem Text.",
+    "Im folgenden wird ein Text und eine Frage gestellt. Die Antwort auf die Frage ist ein Teil des Textes",
+]
 
 
 def germandpr():
@@ -29,12 +37,10 @@ def germandpr():
 
         random.shuffle(ctx)
 
-        ctx_string = ""
-        for context in ctx:
-            ctx_string += f"{context}\n"
+        ctx_string = "\n".join(ctx)
 
-        PROMPT = f"""{PROMPTER}Extrahiere die Antwort auf die Frage aus dem Text.
-Frage: {question}
+        PROMPT = f"""{SYSTEM}{random.choice(SYSTEM_PROMPTS)}{END}
+{PROMPTER}Frage: {question}
 Text: {ctx_string}{END}{BOT}{answer}{END}"""
 
         all_rows.append(PROMPT)

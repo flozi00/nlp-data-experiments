@@ -1,5 +1,15 @@
 import datasets
-from TOKENS import BOT, PROMPTER, END
+from TOKENS import BOT, PROMPTER, END, SYSTEM
+import random
+
+SYSTEM_PROMPTS = [
+    "Gegeben ist ein Text und eine Frage. Die Antwort auf die Frage ist eine der vorgegebenen Antworten.",
+    "Im folgenden Text ist eine Frage gestellt. Die Antwort auf die Frage ist eine der gegebenen Antworten.",
+    "Im folgenden wird eine passende Antwortmöglichkeit zu einer Frage gesucht.",
+    "Gegeben ist eine Konversation zwischen einem Assistenten und einem Nutzer. Der Nutzer stellt eine Frage und der Assistent antwortet. Die Antwort des Assistenten ist eine der vorgegebenen Antworten.",
+    "Im folgenden beantwortet ein Assistent eine Frage des Nutzers. Die Antwort des Assistenten ist eine der Antworten welche der Nutzer aufzählt.",
+    "Im folgenden sucht der Nutzer die passende Antwort zu einer Frage. Der Nutzer hat die Auswahl zwischen vier Antworten. Der Assistent sucht dem Nutzer die passende Antwort aus.",
+]
 
 
 def belebele():
@@ -29,13 +39,13 @@ def belebele():
         elif "4" in entry["correct_answer_num"]:
             correct_answer = mc_answer4
 
-        PROMPT = f"""{PROMPTER}Gegeben ist ein Text und eine Frage.
-Die Antwort auf die Frage ist eine der vier vorgegebenen Antworten.
-Antwortmöglichkeiten:
+        PROMPT = f"""{SYSTEM}{random.choice(SYSTEM_PROMPTS)}{END}
+{PROMPTER}
 {mc_answer1}
 {mc_answer2}
 {mc_answer3}
 {mc_answer4}
+
 Text: {flores_passage}
 Frage: {question}{END}{BOT}{correct_answer}{END}"""
 
