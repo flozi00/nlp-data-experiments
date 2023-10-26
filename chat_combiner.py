@@ -46,7 +46,6 @@ final_data = final_data.filter(lambda x: x["labels"] != "error")
 
 print(final_data)
 
-final_data = get_chat_dataset()
 labels = final_data.unique("labels")
 labeling = datasets.ClassLabel(names=labels)
 final_data.cast_column("labels", labeling)
