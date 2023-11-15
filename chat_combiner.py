@@ -7,7 +7,6 @@ from datas.openassistant import oa
 from datas.belebele import belebele
 from datas.germandpr import germandpr
 from datas.no_robots_german import no_robots
-from utils.classifier import get_dolly_label
 from utils.uncensore_phrases import PHRASES
 
 sets = [bactrian, evol, no_robots]
@@ -23,19 +22,18 @@ def get_chat_dataset() -> datasets.Dataset:
         all_rows.extend(results[0])
         from_ds.extend(results[1])
 
-    all_labels = get_dolly_label(all_rows)
-
     for dset in labeled_sets:
         results = dset()
         all_rows.extend(results[0])
         from_ds.extend(results[1])
-        all_labels.extend(results[2])
+
+    for i in range(len(all_rows)):
+        all_rows[i] = str(all_rows[i]).strip()
 
     ds = datasets.Dataset.from_dict(
         {
             "conversations": all_rows,
             "from": from_ds,
-            "labels": all_labels,
         }
     )
 
@@ -51,13 +49,9 @@ for phrase in PHRASES:
         lambda x: phrase.lower() not in x["conversations"].lower()
     )
 
-final_data = final_data.filter(lambda x: x["labels"] != "error")
+final_data = final_data.filter(lambda x: len(x["conversations"]) >= 128)
 
 print(final_data)
-
-labels = final_data.unique("labels")
-labeling = datasets.ClassLabel(names=labels)
-final_data.cast_column("labels", labeling)
 
 from_labels = final_data.unique("from")
 labeling = datasets.ClassLabel(names=from_labels)

@@ -18,8 +18,7 @@ def belebele():
     from_ds = []
     ds = datasets.load_dataset(
         "facebook/belebele",
-        "deu_Latn",
-        split="test",
+        split="deu_Latn",
     )
 
     for entry in ds:

@@ -5,13 +5,14 @@ import tqdm
 pipe = pipeline(
     "text-classification",
     model="flozi00/multilingual-e5-large-llm-tasks",
-    torch_dtype=torch.float16,
-    model_kwargs={
-        "load_in_4bit": True,
-    },
+    device=0,
 )
+pipe.model = pipe.model.to_bettertransformer()
+
+from filecache import filecache
 
 
+@filecache(7 * 24 * 60 * 60)
 def get_dolly_label(prompt: list) -> list:
     labels = []
     for i in tqdm.tqdm(range(0, len(prompt), 16)):
