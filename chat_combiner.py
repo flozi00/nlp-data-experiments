@@ -9,8 +9,8 @@ from datas.germandpr import germandpr
 from datas.no_robots_german import no_robots
 from utils.uncensore_phrases import PHRASES
 
-sets = [bactrian, evol, no_robots]
-labeled_sets = [dolly, oa, belebele, germandpr]
+sets = [bactrian, evol, no_robots, dolly]
+labeled_sets = [oa, belebele, germandpr]
 
 
 def get_chat_dataset() -> datasets.Dataset:
