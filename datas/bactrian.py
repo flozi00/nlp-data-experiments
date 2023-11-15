@@ -4,7 +4,6 @@ import datasets
 
 def bactrian():
     all_rows = []
-    all_labels = []
     from_ds = []
     """
     The Bactrian-X dataset is a collection of 3.4M instruction-response pairs in 52 languages, 
@@ -13,14 +12,13 @@ def bactrian():
     resulting in 3.4M instruction-response pairs in 52 languages (52 languages x 67k instances = 3.4M instances).
     """
     ds = datasets.load_dataset("MBZUAI/Bactrian-X", "de", split="train")
-    ds_processed, labels_processed = process_3_part_ds(
+    ds_processed = process_3_part_ds(
         "instruction",
         "input",
         "output",
         ds,
     )
     all_rows.extend(ds_processed)
-    all_labels.extend(labels_processed)
     from_ds.extend(["MBZUAI/Bactrian-X"] * len(ds_processed))
 
-    return all_rows, all_labels, from_ds
+    return all_rows, from_ds

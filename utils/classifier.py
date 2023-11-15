@@ -1,22 +1,23 @@
-from filecache import filecache
 from transformers import pipeline
 import torch
+import tqdm
 
 pipe = pipeline(
     "text-classification",
     model="flozi00/multilingual-e5-large-llm-tasks",
-    device=0,
     torch_dtype=torch.float16,
+    model_kwargs={
+        "load_in_4bit": True,
+    },
 )
 
 
-@filecache(7 * 24 * 60 * 60)
-def get_dolly_label(prompt: str) -> str:
-    prompt = prompt[: 450 * 3]
-    try:
-        category = pipe(prompt)[0]["label"].strip()
-    except Exception as e:
-        print(e)
-        print(prompt)
-        category = "error"
-    return category
+def get_dolly_label(prompt: list) -> list:
+    labels = []
+    for i in tqdm.tqdm(range(0, len(prompt), 16)):
+        try:
+            category = pipe(prompt[i : i + 16], batch_size=16, truncation=True)
+            labels.extend([x["label"] for x in category])
+        except Exception as e:
+            print(e)
+    return labels

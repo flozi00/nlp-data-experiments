@@ -30,4 +30,7 @@ PHRASES = [
     "java",
     "matlab",
     "html",
+    "algorithmus",
+    "übersetz",
+    "translat",
 ]

@@ -3,7 +3,6 @@ import numpy as np
 import torch
 from datasets import load_dataset
 from sentence_transformers import SentenceTransformer
-from tqdm.auto import tqdm
 
 model = SentenceTransformer("intfloat/multilingual-e5-large")
 

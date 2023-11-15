@@ -24,4 +24,4 @@ def oa() -> tuple[list, list, list]:
         except Exception as e:
             print(e)
 
-    return all_rows, all_labels, from_ds
+    return all_rows, from_ds, all_labels

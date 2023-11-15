@@ -50,4 +50,4 @@ def germandpr():
         all_labels.append("closed_qa")
         from_ds.append("deepset/germandpr")
 
-    return all_rows, all_labels, from_ds
+    return all_rows, from_ds, all_labels

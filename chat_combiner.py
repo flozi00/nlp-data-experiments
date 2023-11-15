@@ -6,21 +6,30 @@ from datas.evolinstruct import evol
 from datas.openassistant import oa
 from datas.belebele import belebele
 from datas.germandpr import germandpr
+from datas.no_robots_german import no_robots
+from utils.classifier import get_dolly_label
 from utils.uncensore_phrases import PHRASES
 
-sets = [dolly, bactrian, evol, oa, belebele, germandpr]
+sets = [bactrian, evol, no_robots]
+labeled_sets = [dolly, oa, belebele, germandpr]
 
 
 def get_chat_dataset() -> datasets.Dataset:
     all_rows = []
-    all_labels = []
     from_ds = []
 
     for dset in sets:
         results = dset()
         all_rows.extend(results[0])
-        all_labels.extend(results[1])
-        from_ds.extend(results[2])
+        from_ds.extend(results[1])
+
+    all_labels = get_dolly_label(all_rows)
+
+    for dset in labeled_sets:
+        results = dset()
+        all_rows.extend(results[0])
+        from_ds.extend(results[1])
+        all_labels.extend(results[2])
 
     ds = datasets.Dataset.from_dict(
         {

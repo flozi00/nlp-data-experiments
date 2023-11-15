@@ -1,6 +1,5 @@
 from utils.processor import process_3_part_ds
 import datasets
-from TOKENS import BOT, PROMPTER, END, SYSTEM
 
 
 def dolly():
@@ -27,12 +26,4 @@ def dolly():
         ["argilla/databricks-dolly-15k-curated-multilingual"] * len(ds_processed)
     )
 
-    labels = ds.unique("category")
-    for row in ds:
-        prompt = f"""{SYSTEM}Klassifiziere die folgende Anweisung als eine der folgenden Kategorien: {", ".join(labels)}{END} 
-{PROMPTER}{row["context"]}\n{row["instruction"]}{END}{BOT}{row["category"]}{END}"""
-        all_rows.append(prompt)
-        all_labels.append("classification")
-        from_ds.append("argilla/databricks-dolly-15k-curated-multilingual")
-
-    return all_rows, all_labels, from_ds
+    return all_rows, from_ds, all_labels

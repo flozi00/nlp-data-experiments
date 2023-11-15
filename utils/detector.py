@@ -1,7 +1,5 @@
 from filecache import filecache
 from langdetect import detect
-from transformers import pipeline
-import torch
 
 
 @filecache(7 * 24 * 60 * 60)

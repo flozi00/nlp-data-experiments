@@ -53,4 +53,4 @@ Frage: {question}{END}{BOT}{correct_answer}{END}"""
         all_labels.append("closed_qa")
         from_ds.append("facebook/belebele")
 
-    return all_rows, all_labels, from_ds
+    return all_rows, from_ds, all_labels
