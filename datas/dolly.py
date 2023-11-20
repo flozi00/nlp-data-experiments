@@ -1,8 +1,28 @@
-from utils.processor import process_3_part_ds
 import datasets
+from tqdm import tqdm
+from TOKENS import BOT, PROMPTER, END
+from utils.detector import detector
 
 
-def dolly():
+def process_3_part_ds(
+    first,
+    second,
+    output,
+    data,
+) -> tuple[list, list]:
+    ds = []
+    label = []
+    for row in tqdm(data):
+        if detector(row[first] + row[second]) == detector(row[output]) == "de":
+            ds.append(
+                f"{PROMPTER}{row[first]}\n{row[second]}{END}{BOT}{row[output]}{END}"
+            )
+            label.append(row["category"])
+
+    return ds, label
+
+
+def dolly() -> tuple[list, list, list]:
     all_rows = []
     from_ds = []
     """
@@ -13,7 +33,7 @@ def dolly():
     ds = datasets.load_dataset(
         "argilla/databricks-dolly-15k-curated-multilingual", split="de"
     )
-    ds_processed = process_3_part_ds(
+    ds_processed, labels = process_3_part_ds(
         "context",
         "instruction",
         "response",
@@ -24,4 +44,4 @@ def dolly():
         ["argilla/databricks-dolly-15k-curated-multilingual"] * len(ds_processed)
     )
 
-    return all_rows, from_ds
+    return all_rows, from_ds, labels

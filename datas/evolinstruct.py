@@ -11,6 +11,7 @@ def evol() -> tuple[list, list, list]:
     """
     all_rows = []
     from_ds = []
+    labels = []
     ds = datasets.load_dataset(
         "FreedomIntelligence/evol-instruct-deutsch", split="train"
     )
@@ -27,5 +28,6 @@ def evol() -> tuple[list, list, list]:
         ):
             all_rows.append(chat)
             from_ds.append("FreedomIntelligence/evol-instruct-deutsch")
+            labels.append("unknown")
 
-    return all_rows, from_ds
+    return all_rows, from_ds, labels

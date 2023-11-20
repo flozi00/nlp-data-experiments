@@ -19,7 +19,7 @@ def oa() -> tuple[list, list, list]:
             if detector(prompt) != "de":
                 continue
             all_rows.append(prompt)
-            all_labels.append("chat")
+            all_labels.append("unknown")
             from_ds.append("OpenAssistant/oasst_top1_2023-08-25")
         except Exception as e:
             print(e)

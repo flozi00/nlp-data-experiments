@@ -12,14 +12,11 @@ SYSTEM_PROMPTS = [
 ]
 
 
-def belebele():
+def belebele() -> tuple[list, list, list]:
     all_rows = []
     all_labels = []
     from_ds = []
-    ds = datasets.load_dataset(
-        "facebook/belebele",
-        split="deu_Latn",
-    )
+    ds = datasets.load_dataset("facebook/belebele", split="deu_Latn")
 
     for entry in ds:
         flores_passage = entry["flores_passage"]

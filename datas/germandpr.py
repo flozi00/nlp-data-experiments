@@ -10,15 +10,21 @@ SYSTEM_PROMPTS = [
     "Im folgenden wird ein Text und eine Frage gestellt. Die Antwort auf die Frage ist ein Teil des Textes",
 ]
 
+RAG_SYSTEM_PROMPTS = [
+    "Du bist ein RAG Assistent. Ein Nutzer stellt dir eine Frage und gibt dir einen Text. Klassifiziere den Text als relevant oder irrelevant für die Frage.",
+    "Im folgenden wird ein Text und eine Frage gestellt. Klassifiziere den Text als relevant oder irrelevant für die Frage.",
+    "Ein RAG Assistent bekommt einen Text und eine Frage gestellt. Der Assistent soll den Text als relevant oder irrelevant für die Frage klassifizieren.",
+    "Ein Text und eine Frage müssen beurteilt werden. Der Text ist relevant oder irrelevant für die Frage.",
+    "Im folgenden wird ein Text und eine Frage ausgeführt. Der Text ist relevant oder irrelevant für die Frage.",
+    "Ein Klassifizierer muss einen Text und eine Frage beurteilen. Der Text ist relevant oder irrelevant für die Frage.",
+]
 
-def germandpr():
+
+def germandpr() -> tuple[list, list, list]:
     all_rows = []
     all_labels = []
     from_ds = []
-    ds = datasets.load_dataset(
-        "deepset/germandpr",
-        split="train",
-    )
+    ds = datasets.load_dataset("deepset/germandpr", split="train")
 
     for entry in ds:
         question = entry["question"]
@@ -48,6 +54,43 @@ def germandpr():
 
         all_rows.append(PROMPT)
         all_labels.append("closed_qa")
+        from_ds.append("deepset/germandpr")
+
+    return all_rows, from_ds, all_labels
+
+
+def germandpr_rag() -> tuple[list, list, list]:
+    all_rows = []
+    all_labels = []
+    from_ds = []
+    ds = datasets.load_dataset("deepset/germandpr", split="train")
+
+    for entry in ds:
+        question = entry["question"]
+        positive_ctxs = entry["positive_ctxs"]
+        hard_negative_ctxs = entry["hard_negative_ctxs"]
+        negative_ctxs = entry["negative_ctxs"]
+
+        accepted_ctxs = []
+        declined_ctxs = []
+
+        for positive_ctx in positive_ctxs["text"]:
+            accepted_ctxs.append(positive_ctx)
+        for hard_negative_ctx in hard_negative_ctxs["text"]:
+            declined_ctxs.append(hard_negative_ctx)
+        for negative_ctx in negative_ctxs["text"]:
+            declined_ctxs.append(negative_ctx)
+
+        for ctx in accepted_ctxs:
+            PROMPT = f"""{SYSTEM}{random.choice(RAG_SYSTEM_PROMPTS)}{END}
+{PROMPTER}{ctx}\n\n{question}{END}{BOT}{"relevant"}{END}"""
+
+        for ctx in declined_ctxs:
+            PROMPT = f"""{SYSTEM}{random.choice(RAG_SYSTEM_PROMPTS)}{END}
+{PROMPTER}{ctx}\n\n{question}{END}{BOT}{"irrelevant"}{END}"""
+
+        all_rows.append(PROMPT)
+        all_labels.append("classification")
         from_ds.append("deepset/germandpr")
 
     return all_rows, from_ds, all_labels

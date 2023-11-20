@@ -5,27 +5,42 @@ from datas.dolly import dolly
 from datas.evolinstruct import evol
 from datas.openassistant import oa
 from datas.belebele import belebele
-from datas.germandpr import germandpr
+from datas.germandpr import germandpr, germandpr_rag
 from datas.no_robots_german import no_robots
+from datas.schnabeltier import schnabeltier
+from datas.germanpoems import german_poems
+from datas.germansongs import german_songs
+from datas.germanqa import germanqa
+from datas.single_queries import single_queries
 from utils.uncensore_phrases import PHRASES
 
-sets = [bactrian, evol, no_robots, dolly]
-labeled_sets = [oa, belebele, germandpr]
+labeled_sets = [
+    oa,
+    belebele,
+    germandpr,
+    germandpr_rag,
+    bactrian,
+    evol,
+    no_robots,
+    dolly,
+    schnabeltier,
+    german_poems,
+    german_songs,
+    germanqa,
+    single_queries,
+]
 
 
 def get_chat_dataset() -> datasets.Dataset:
     all_rows = []
     from_ds = []
-
-    for dset in sets:
-        results = dset()
-        all_rows.extend(results[0])
-        from_ds.extend(results[1])
+    labels = []
 
     for dset in labeled_sets:
         results = dset()
         all_rows.extend(results[0])
         from_ds.extend(results[1])
+        labels.extend(results[2])
 
     for i in range(len(all_rows)):
         all_rows[i] = str(all_rows[i]).strip()
@@ -34,6 +49,7 @@ def get_chat_dataset() -> datasets.Dataset:
         {
             "conversations": all_rows,
             "from": from_ds,
+            "labels": labels,
         }
     )
 
