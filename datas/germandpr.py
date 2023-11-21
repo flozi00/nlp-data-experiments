@@ -83,11 +83,11 @@ def germandpr_rag() -> tuple[list, list, list]:
 
         for ctx in accepted_ctxs:
             PROMPT = f"""{SYSTEM}{random.choice(RAG_SYSTEM_PROMPTS)}{END}
-{PROMPTER}{ctx}\n\n{question}{END}{BOT}{"relevant"}{END}"""
+{PROMPTER}Passage: {ctx}\n\nFrage: {question}{END}{BOT}{"relevant"}{END}"""
 
         for ctx in declined_ctxs:
             PROMPT = f"""{SYSTEM}{random.choice(RAG_SYSTEM_PROMPTS)}{END}
-{PROMPTER}{ctx}\n\n{question}{END}{BOT}{"irrelevant"}{END}"""
+{PROMPTER}Passage: {ctx}\n\nFrage: {question}{END}{BOT}{"irrelevant"}{END}"""
 
         all_rows.append(PROMPT)
         all_labels.append("classification")
