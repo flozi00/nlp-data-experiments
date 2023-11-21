@@ -2,24 +2,13 @@ import datasets
 from TOKENS import BOT, PROMPTER, END, SYSTEM
 
 ds = datasets.load_dataset("HuggingFaceH4/no_robots", split="train_sft")
+ds2 = datasets.load_dataset("flozi00/no_robots_german", split="train")
 
-entries = []
+texts = ds2["messages"]
+labels = ds["category"][: len(texts)]
 
-for entry in ds["messages"]:
-    text = ""
-    for message in entry:
-        if message["role"] == "user":
-            tok = PROMPTER
-        elif message["role"] == "assistant":
-            tok = BOT
-        else:
-            tok = SYSTEM
+print(len(texts), len(labels))
 
-        text += f"{tok}{message['content']}{END}\n"
-    
-    entries.append(text)
+ds = datasets.Dataset.from_dict({"messages": texts, "category": labels})
 
-with open("no_robots.txt", "w") as f:
-    for entry in entries:
-        f.write(entry)
-        f.write("\n***\n")
+ds.push_to_hub("no_robots_german")
