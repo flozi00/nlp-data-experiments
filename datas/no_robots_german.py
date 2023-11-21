@@ -25,6 +25,9 @@ def get_label(label):
     if label in ["Extract"]:
         return "information_extraction"
 
+    if label in ["Coding"]:
+        return "coding"
+
     return "unknown"
 
 

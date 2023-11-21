@@ -15,18 +15,18 @@ from datas.single_queries import single_queries
 from utils.uncensore_phrases import PHRASES
 
 labeled_sets = [
-    oa,
+    # oa,
     belebele,
     germandpr,
     germandpr_rag,
-    bactrian,
-    evol,
+    # bactrian,
+    # evol,
     no_robots,
     dolly,
-    schnabeltier,
+    # schnabeltier,
     german_poems,
     german_songs,
-    germanqa,
+    # germanqa,
     single_queries,
 ]
 
