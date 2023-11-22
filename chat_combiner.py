@@ -1,31 +1,28 @@
 import datasets
 from TOKENS import *
-from datas.bactrian import bactrian
 from datas.dolly import dolly
 from datas.evolinstruct import evol
 from datas.openassistant import oa
 from datas.belebele import belebele
 from datas.germandpr import germandpr, germandpr_rag
 from datas.no_robots_german import no_robots
-from datas.schnabeltier import schnabeltier
-from datas.germanpoems import german_poems
-from datas.germansongs import german_songs
-from datas.germanqa import germanqa
+from datas.alpaca_gpt4 import alpaca
 from datas.single_queries import single_queries
 from utils.uncensore_phrases import PHRASES
 
 labeled_sets = [
-    # oa,
+    oa,
     belebele,
     germandpr,
     germandpr_rag,
     # bactrian,
-    # evol,
+    evol,
+    alpaca,
     no_robots,
     dolly,
     # schnabeltier,
-    german_poems,
-    german_songs,
+    # german_poems,
+    # german_songs,
     # germanqa,
     single_queries,
 ]
