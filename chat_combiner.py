@@ -4,27 +4,20 @@ from datas.dolly import dolly
 from datas.evolinstruct import evol
 from datas.openassistant import oa
 from datas.belebele import belebele
-from datas.germandpr import germandpr, germandpr_rag
+from datas.bactrian import bactrian
 from datas.no_robots_german import no_robots
 from datas.alpaca_gpt4 import alpaca
-from datas.single_queries import single_queries
+from utils.format import convert_to_sharegpt
 from utils.uncensore_phrases import PHRASES
 
 labeled_sets = [
-    oa,
+    #oa,
     belebele,
-    germandpr,
-    germandpr_rag,
-    # bactrian,
+    bactrian,
     evol,
     alpaca,
     no_robots,
     dolly,
-    # schnabeltier,
-    # german_poems,
-    # german_songs,
-    # germanqa,
-    single_queries,
 ]
 
 
@@ -47,6 +40,7 @@ def get_chat_dataset() -> datasets.Dataset:
             "conversations": all_rows,
             "from": from_ds,
             "labels": labels,
+            "sharegpt": convert_to_sharegpt(all_rows),
         }
     )
 
@@ -70,4 +64,4 @@ from_labels = final_data.unique("from")
 labeling = datasets.ClassLabel(names=from_labels)
 final_data.cast_column("from", labeling)
 
-final_data.push_to_hub("conversations", max_shard_size="1GB")
+final_data.push_to_hub("flozi00/conversations", max_shard_size="1GB")
