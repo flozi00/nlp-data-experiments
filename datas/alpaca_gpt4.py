@@ -2,7 +2,6 @@ import datasets
 from tqdm import tqdm
 
 from TOKENS import BOT, PROMPTER, END
-from utils.detector import detector
 
 
 def alpaca() -> tuple[list, list, list]:
@@ -19,13 +18,9 @@ def alpaca() -> tuple[list, list, list]:
             chat += (
                 f"{PROMPTER if entry['from'] == 'human' else BOT}{entry['value']}{END}"
             )
-        if (
-            detector(row["conversations"][0]["value"])
-            == detector(row["conversations"][1]["value"])
-            == "de"
-        ):
-            all_rows.append(chat)
-            from_ds.append("FreedomIntelligence/alpaca-gpt4-deutsch")
-            labels.append("unknown")
+    
+        all_rows.append(chat)
+        from_ds.append("FreedomIntelligence/alpaca-gpt4-deutsch")
+        labels.append("unknown")
 
     return all_rows, from_ds, labels

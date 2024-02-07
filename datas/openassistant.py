@@ -1,27 +1,24 @@
 import datasets
 from TOKENS import BOT, PROMPTER, END
-from utils.detector import detector
 from tqdm import tqdm
 
 
 def oa() -> tuple[list, list, list]:
     all_rows = []
-    all_labels = []
     from_ds = []
+    labels = []
+    ds = datasets.load_dataset(
+        "blancsw/oasst2_top1_chat_format", split="train"
+    ).filter(lambda x: x["langs"] == "de")
+    for row in tqdm(ds, desc="blancsw/oasst2_top1_chat_format"):
+        chat = ""
+        for entry in row["conversation"]:
+            chat += (
+                f"{PROMPTER if entry['role'] == 'user' else BOT}{entry['content']}{END}"
+            )
+    
+        all_rows.append(chat)
+        from_ds.append("blancsw/oasst2_top1_chat_format")
+        labels.append("unknown")
 
-    ds = datasets.load_dataset("OpenAssistant/oasst_top1_2023-08-25", split="train")
-    for row in tqdm(ds, desc="OpenAssistant"):
-        try:
-            prompt = row["text"]
-            prompt = prompt.replace("<|im_start|>user", PROMPTER)
-            prompt = prompt.replace("<|im_start|>assistant", BOT)
-            prompt = prompt.replace("<|im_end|>", END)
-            if detector(prompt) != "de":
-                continue
-            all_rows.append(prompt)
-            all_labels.append("unknown")
-            from_ds.append("OpenAssistant/oasst_top1_2023-08-25")
-        except Exception as e:
-            print(e)
-
-    return all_rows, from_ds, all_labels
+    return all_rows, from_ds, labels

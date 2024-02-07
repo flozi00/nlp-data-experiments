@@ -7,17 +7,25 @@ from datas.belebele import belebele
 from datas.bactrian import bactrian
 from datas.no_robots_german import no_robots
 from datas.alpaca_gpt4 import alpaca
+from datas.function_calling import function_calling
+from datas.self_instruct_gpt4 import self_instruct_gpt4
+from datas.ultra_chat import ultra_chat
+from datas.wiki_qa import wiki_qa
 from utils.format import convert_to_sharegpt
 from utils.uncensore_phrases import PHRASES
 
 labeled_sets = [
-    #oa,
+    oa,
     belebele,
     bactrian,
     evol,
     alpaca,
     no_robots,
     dolly,
+    function_calling,
+    self_instruct_gpt4,
+    ultra_chat,
+    wiki_qa,
 ]
 
 
