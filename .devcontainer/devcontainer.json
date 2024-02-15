@@ -1,0 +1,17 @@
+{
+    "image": "flozi00/atra:latest",
+    "runArgs": [
+        "--gpus",
+        "all"
+    ],
+    "customizations": {
+        // Configure properties specific to VS Code.
+        "vscode": {
+            // Add the IDs of extensions you want installed when the container is created.
+            "extensions": [
+                "ms-python.vscode-pylance",
+                "ms-python.python"
+            ]
+        }
+    }
+}

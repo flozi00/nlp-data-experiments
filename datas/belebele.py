@@ -1,6 +1,7 @@
 import datasets
 from TOKENS import BOT, PROMPTER, END, SYSTEM
 import random
+from tqdm import tqdm
 
 SYSTEM_PROMPTS = [
     "Gegeben ist ein Text und eine Frage. Die Antwort auf die Frage ist eine der vorgegebenen Antworten.",
@@ -18,7 +19,7 @@ def belebele() -> tuple[list, list, list]:
     from_ds = []
     ds = datasets.load_dataset("facebook/belebele", split="deu_Latn")
 
-    for entry in ds:
+    for entry in tqdm(ds, desc="belebele"):
         flores_passage = entry["flores_passage"]
         question = entry["question"]
         mc_answer1 = "1. " + entry["mc_answer1"]

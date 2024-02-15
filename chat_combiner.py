@@ -1,31 +1,20 @@
 import datasets
-from TOKENS import *
+from TOKENS import PROMPTER, BOT, SYSTEM, END
 from datas.dolly import dolly
-from datas.evolinstruct import evol
 from datas.openassistant import oa
 from datas.belebele import belebele
-from datas.bactrian import bactrian
 from datas.no_robots_german import no_robots
-from datas.alpaca_gpt4 import alpaca
 from datas.function_calling import function_calling
-from datas.self_instruct_gpt4 import self_instruct_gpt4
-from datas.ultra_chat import ultra_chat
-from datas.wiki_qa import wiki_qa
 from utils.format import convert_to_sharegpt
+from utils.classifier import get_dolly_label
 from utils.uncensore_phrases import PHRASES
 
 labeled_sets = [
     oa,
     belebele,
-    bactrian,
-    evol,
-    alpaca,
     no_robots,
     dolly,
     function_calling,
-    self_instruct_gpt4,
-    ultra_chat,
-    wiki_qa,
 ]
 
 
@@ -36,19 +25,52 @@ def get_chat_dataset() -> datasets.Dataset:
 
     for dset in labeled_sets:
         results = dset()
-        all_rows.extend(results[0])
-        from_ds.extend(results[1])
-        labels.extend(results[2])
+        for i in range(len(results[0])):
+            if results[0][i].count(PROMPTER) == results[0][i].count(BOT) >= 1:
+                all_rows.append(results[0][i])
+                from_ds.append(results[1][i])
+                labels.append(results[2][i])
 
+    conversations = convert_to_sharegpt(all_rows)
+
+    first_messages = []
+    first_answer = []
+
+    # get the first message from human of each conversation
+    for conv in conversations:
+        human_found = False
+        for msg in conv:
+            if msg["from"] == "human" and not human_found:
+                first_messages.append(msg["value"])
+                human_found = True
+        if not human_found:
+            print(conv)
+            exit()
+
+    # get the first answer from the AI of each conversation
+    for conv in conversations:
+        bot_found = False
+        for msg in conv:
+            if msg["from"] == "gpt" and not bot_found:
+                first_answer.append(msg["value"])
+                bot_found = True
+        if not bot_found:
+            print(conv)
+            exit()
+
+    # check if all labels are present
     for i in range(len(all_rows)):
-        all_rows[i] = str(all_rows[i]).strip()
+        if labels[i] == "unknown":
+            labels[i] = get_dolly_label(first_messages[i])
 
     ds = datasets.Dataset.from_dict(
         {
-            "conversations": all_rows,
+            "raw": all_rows,
             "from": from_ds,
             "labels": labels,
-            "sharegpt": convert_to_sharegpt(all_rows),
+            "conversations": conversations,
+            "first_message": first_messages,
+            "first_answer": first_answer,
         }
     )
 
@@ -60,11 +82,9 @@ final_data = get_chat_dataset()
 print(final_data)
 
 for phrase in PHRASES:
-    final_data = final_data.filter(
-        lambda x: phrase.lower() not in x["conversations"].lower()
-    )
+    final_data = final_data.filter(lambda x: phrase.lower() not in x["raw"].lower())
 
-final_data = final_data.filter(lambda x: len(x["conversations"]) >= 128)
+final_data = final_data.filter(lambda x: len(x["raw"]) >= 128)
 
 print(final_data)
 

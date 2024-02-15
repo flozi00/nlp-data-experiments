@@ -11,10 +11,8 @@ def process_3_part_ds(
 ) -> tuple[list, list]:
     ds = []
     label = []
-    for row in tqdm(data):
-        ds.append(
-            f"{PROMPTER}{row[first]}\n{row[second]}{END}{BOT}{row[output]}{END}"
-        )
+    for row in tqdm(data, desc="dolly"):
+        ds.append(f"{PROMPTER}{row[first]}\n{row[second]}{END}{BOT}{row[output]}{END}")
         label.append(row["category"])
 
     return ds, label

@@ -39,14 +39,16 @@ def no_robots() -> tuple[list, list, list]:
     ds = datasets.load_dataset("flozi00/no_robots_german", split="train")
     for row in tqdm(ds, desc="no_robots_german"):
         try:
+            converted_label = get_label(row["category"])
             prompt = row["messages"]
             prompt = prompt.replace("### User:", PROMPTER)
-            prompt = prompt.replace("### Assistant:", BOT)
+            prompt = prompt.replace("### Assistant:", END + BOT)
             prompt = prompt.replace("### System:", SYSTEM)
             prompt = prompt.replace("</s>", END)
+            prompt = prompt.replace(END + END, END)
             all_rows.append(prompt)
             from_ds.append("flozi00/no_robots_german")
-            labels.append(get_label(row["category"]))
+            labels.append(converted_label)
         except Exception as e:
             print(e)
 
