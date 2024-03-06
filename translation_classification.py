@@ -1,11 +1,13 @@
+import openai
 import datasets
 import json
+import huggingface_hub
 from tqdm.auto import tqdm
-from huggingface_hub import InferenceClient
 
-
-client = InferenceClient(model="http://localhost:1337")
-
+client = openai.OpenAI(
+    api_key=huggingface_hub.get_token(),
+    base_url="http://localhost:1337/v1/",
+)
 
 system_content = """You are an classiyfier for translation quality. Your task is to classify the quality of the translation into one of the following categories: Good, Bad, or Neutral.
 
@@ -28,7 +30,12 @@ de: Deine Habgier wird noch dein Tod sein. -> en: It's greed that it's gonna be 
 de: Sagen Sie einfach stopp. -> en: Just say when. -> Bad
 de: Ich darf wirklich aufstehen, Herr Hofrat? -> en: I am really allowed to get up, Doctor? -> Bad
 de: Nehmen sie Platz. -> en: Please take a seat. -> Good
+de: in Erwägung nachstehenden Grundes: -> en: whereas: -> Bad
+de: - Danke. - Okay. -> en: Thank you. -> Bad
+de: Eins, zwei, eins, zwei. -> en: One, two, one, two. -> Good
+de: Eins, zwei, eins, zwei. -> en: slow, slow, quick, quick -> Bad
 
+Answer the classification of the translation pair only ! Do not explain your answer or correct the translation.
 """
 
 
@@ -39,7 +46,7 @@ except FileNotFoundError:
     datas = []
 
 ds = datasets.load_dataset("Helsinki-NLP/opus-100", "de-en", split="train").filter(
-    lambda x: len(x["translation"]["de"]) >= 10 and len(x["translation"]["en"]) <= 1024
+    lambda x: len(x["translation"]["de"]) >= 5 and len(x["translation"]["en"]) <= 2048
 )
 
 COUNTING = 0
@@ -51,24 +58,37 @@ for example in tqdm(ds, desc="Helsinki-NLP/opus-100"):
     if any(d["de"] == de and d["en"] == en for d in datas):
         continue
 
-    response = client.text_generation(
-        prompt=f"{system_content + prompt} ->",
-        max_new_tokens=4,
-        temperature=0.01,
-        do_sample=False,
-    )
+    if len(de.split(" ")) > len(en.split(" ") * 2) or len(en.split(" ")) > len(
+        de.split(" ") * 2
+    ):
+        label = "Bad"
+    else:
+        chat_completion = client.chat.completions.create(
+            model="",
+            messages=[
+                {"role": "user", "content": system_content},
+                {
+                    "role": "assistant",
+                    "content": "Okay, let's start with the first example.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.1,
+            max_tokens=4,
+        )
+        response = chat_completion.choices[0].message.content
 
-    label = (
-        "Neutral"
-        if "Neutral" in response
-        else ("Good" if "Good" in response else "Bad" if "Bad" in response else "None")
-    )
-    if label != "None":
-        datas.append(
-            {"de": de, "en": en, "label": label, "text": f"en: {en} --> de: {de}"}
+        label = (
+            "Neutral"
+            if "Neutral" in response
+            else (
+                "Good" if "Good" in response else "Bad" if "Bad" in response else "None"
+            )
         )
 
-    if COUNTING % 100 == 0:
+    datas.append({"de": de, "en": en, "label": label, "text": f"en: {en} --> de: {de}"})
+
+    if COUNTING % 10 == 0:
         with open("translation_classification.json", "w", encoding="utf-8") as f:
             f.write(json.dumps(datas, indent=4, ensure_ascii=False))
 
