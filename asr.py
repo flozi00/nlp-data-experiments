@@ -2,6 +2,8 @@ import datasets
 from unidecode import unidecode
 from difflib import SequenceMatcher
 from nemo.collections.asr.models import EncDecMultiTaskModel
+import torch_tensorrt
+import torch
 
 
 def similar(a, b):
@@ -9,7 +11,14 @@ def similar(a, b):
 
 
 # load model
-canary_model = EncDecMultiTaskModel.from_pretrained("nvidia/canary-1b")
+canary_model = EncDecMultiTaskModel.from_pretrained(
+    "nvidia/canary-1b", map_location="cuda:0"
+)
+
+canary_model = torch.compile(
+    canary_model, mode="max-autotune", backend="torch_tensorrt", fullgraph=True
+)
+
 
 # update dcode params
 decode_cfg = canary_model.cfg.decoding
@@ -67,7 +76,10 @@ cv = cv.add_column("source", new_column)
 
 # do the voxpopuli stuff
 voxpopuli = datasets.load_dataset(
-    "facebook/voxpopuli", "de", split="train", cache_dir="volume_ds_cache"
+    "facebook/voxpopuli",
+    "de",
+    split="train+test+validation",
+    cache_dir="volume_ds_cache",
 )
 voxpopuli = voxpopuli.cast_column(
     "audio", datasets.Audio(sampling_rate=16000, decode=False)
@@ -90,7 +102,7 @@ voxpopuli = voxpopuli.add_column("source", new_column)
 mls = datasets.load_dataset(
     "facebook/multilingual_librispeech",
     "german",
-    split="train",
+    split="train+test+validation",
     cache_dir="volume_ds_cache",
 )
 mls = mls.cast_column("audio", datasets.Audio(sampling_rate=16000, decode=False))
@@ -109,27 +121,29 @@ mls = mls.add_column("source", new_column)
 
 voxpopuli = datasets.concatenate_datasets([voxpopuli, mls])
 
+print(voxpopuli)
 
 audios = [voxpopuli[i]["audio"]["path"] for i in range(len(voxpopuli))]
-transcript = canary_model.transcribe(audios, batch_size=16)
-for i in range(len(transcript)):
-    transcript[i] = (
-        transcript[i]
-        .replace(" ,", ",")
-        .replace(" .", ".")
-        .replace(" ?", "?")
-        .replace(" !", "!")
-        .replace(" ' ", "'")
-        .replace(" - ", "-")
-        .replace(" : ", ":")
-        .replace(" ; ", ";")
-        .replace(" %", "%")
-    )
+with torch.autocast(enabled=True, dtype=torch.float16, device_type="cuda"):
+    with torch.inference_mode():
+        transcript = canary_model.transcribe(audios, batch_size=96)
+        for i in range(len(transcript)):
+            transcript[i] = (
+                transcript[i]
+                .replace(" ,", ",")
+                .replace(" .", ".")
+                .replace(" ?", "?")
+                .replace(" !", "!")
+                .replace(" ' ", "'")
+                .replace(" - ", "-")
+                .replace(" : ", ":")
+                .replace(" ; ", ";")
+                .replace(" %", "%")
+            )
 
 # add the transcriptions to the dataset and filter
 voxpopuli = voxpopuli.add_column("canary_labels", transcript)
 
-print(voxpopuli)
 voxpopuli = voxpopuli.filter(
     lambda example: similar(
         example["transkription"].lower(), example["canary_labels"].lower()
@@ -137,18 +151,18 @@ voxpopuli = voxpopuli.filter(
 )
 print(voxpopuli)
 
-voxpopuli = (
-    voxpopuli.remove_columns(["transkription"])
-    .rename_column("canary_labels", "transkription")
-    .remove_columns(["canary_labels"])
+voxpopuli = voxpopuli.remove_columns(["transkription"]).rename_column(
+    "canary_labels", "transkription"
 )
 
 
-cv = datasets.concatenate_datasets([cv, voxpopuli])
+cv: datasets.Dataset = datasets.concatenate_datasets([cv, voxpopuli])
 
 # start the quality filtering
 cv = cv.map(normalize_text)
 
 print(cv)
+
+cv.save_to_disk("asr-german-canary")
 
 cv.push_to_hub("flozi00/asr-german-canary")
