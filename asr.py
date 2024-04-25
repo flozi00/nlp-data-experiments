@@ -1,29 +1,40 @@
 import datasets
 from unidecode import unidecode
 from difflib import SequenceMatcher
-from nemo.collections.asr.models import EncDecMultiTaskModel
-import torch_tensorrt
 import torch
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+import torch_tensorrt  # noqa
+from tqdm.auto import tqdm
+
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+model_id = "primeline/whisper-large-v3-german"
+model = AutoModelForSpeechSeq2Seq.from_pretrained(
+    model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True, attn_implementation="sdpa"
+)
+model.to(device)
+processor = AutoProcessor.from_pretrained(model_id)
+
+model = torch.compile(
+    model, mode="max-autotune", backend="torch_tensorrt", fullgraph=True
+)
+
+pipe = pipeline(
+    "automatic-speech-recognition",
+    model=model,
+    tokenizer=processor.tokenizer,
+    feature_extractor=processor.feature_extractor,
+    max_new_tokens=128,
+    chunk_length_s=30,
+    batch_size=16,
+    return_timestamps=False,
+    torch_dtype=torch_dtype,
+    device=device,
+)
 
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio() >= 0.95
-
-
-# load model
-canary_model = EncDecMultiTaskModel.from_pretrained(
-    "nvidia/canary-1b", map_location="cuda:0"
-)
-
-canary_model = torch.compile(
-    canary_model, mode="max-autotune", backend="torch_tensorrt", fullgraph=True
-)
-
-
-# update dcode params
-decode_cfg = canary_model.cfg.decoding
-decode_cfg.beam.beam_size = 1
-canary_model.change_decoding_strategy(decode_cfg)
 
 
 def normalize_text(batch):
@@ -53,7 +64,7 @@ def normalize_text(batch):
 
 # Doing all the commonvoice related filtering stuff
 cv = datasets.load_dataset(
-    "mozilla-foundation/common_voice_16_1",
+    "fsicoli/common_voice_17_0",
     "de",
     split="train+test+validation",
     cache_dir="volume_ds_cache",
@@ -63,7 +74,7 @@ cv = cv.rename_column("sentence", "transkription")
 
 # Filter out the data
 cv = cv.filter(lambda x: x["up_votes"] >= 2 and x["down_votes"] == 0)
-cv = cv.filter(lambda x: len(x["transkription"]) > 10 and len(x["transkription"]) < 512)
+cv = cv.filter(lambda x: len(x["transkription"]) > 32 and len(x["transkription"]) < 512)
 
 # Remove all columns not needed
 features = list(cv.column_names)
@@ -87,7 +98,7 @@ voxpopuli = voxpopuli.cast_column(
 voxpopuli = voxpopuli.rename_column("raw_text", "transkription")
 voxpopuli = voxpopuli.filter(lambda example: example["is_gold_transcript"] is True)
 voxpopuli = voxpopuli.filter(
-    lambda example: len(example["transkription"]) > 10
+    lambda example: len(example["transkription"]) > 32
     and len(example["transkription"]) < 512
 )
 features = list(voxpopuli.column_names)
@@ -108,7 +119,7 @@ mls = datasets.load_dataset(
 mls = mls.cast_column("audio", datasets.Audio(sampling_rate=16000, decode=False))
 mls = mls.rename_column("text", "transkription")
 mls = mls.filter(
-    lambda example: len(example["transkription"]) > 10
+    lambda example: len(example["transkription"]) > 32
     and len(example["transkription"]) < 512
 )
 features = list(mls.column_names)
@@ -121,25 +132,18 @@ mls = mls.add_column("source", new_column)
 
 voxpopuli = datasets.concatenate_datasets([voxpopuli, mls])
 
-print(voxpopuli)
+print(cv, voxpopuli)
 
 audios = [voxpopuli[i]["audio"]["path"] for i in range(len(voxpopuli))]
+transcript = []
 with torch.autocast(enabled=True, dtype=torch.float16, device_type="cuda"):
     with torch.inference_mode():
-        transcript = canary_model.transcribe(audios, batch_size=96)
-        for i in range(len(transcript)):
-            transcript[i] = (
-                transcript[i]
-                .replace(" ,", ",")
-                .replace(" .", ".")
-                .replace(" ?", "?")
-                .replace(" !", "!")
-                .replace(" ' ", "'")
-                .replace(" - ", "-")
-                .replace(" : ", ":")
-                .replace(" ; ", ";")
-                .replace(" %", "%")
-            )
+        batch_size = 8
+        for i in tqdm(range(0, len(audios), batch_size)):
+            batch_audios = audios[i:i+batch_size]
+            batch_results = pipe(batch_audios)
+            for result in batch_results:
+                transcript.append(result["text"])
 
 # add the transcriptions to the dataset and filter
 voxpopuli = voxpopuli.add_column("canary_labels", transcript)
@@ -163,6 +167,9 @@ cv = cv.map(normalize_text)
 
 print(cv)
 
-cv.save_to_disk("asr-german-canary")
+cv = cv.cast_column("audio", datasets.Audio(sampling_rate=16000, decode=False))
 
-cv.push_to_hub("flozi00/asr-german-canary")
+
+cv.save_to_disk("asr-german-mixed")
+
+cv.push_to_hub("flozi00/asr-german-mixed")
