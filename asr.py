@@ -2,17 +2,20 @@ import datasets
 from unidecode import unidecode
 from difflib import SequenceMatcher
 import torch
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline, AutoModelForCausalLM
 import torch_tensorrt  # noqa
 from tqdm.auto import tqdm
+import re
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
-torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+torch_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
 model_id = "primeline/whisper-large-v3-german"
+#model_id = "primeline/distil-whisper-large-v3-german"
 model = AutoModelForSpeechSeq2Seq.from_pretrained(
     model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True, attn_implementation="sdpa"
 )
 model.to(device)
+
 processor = AutoProcessor.from_pretrained(model_id)
 
 model = torch.compile(
@@ -24,9 +27,9 @@ pipe = pipeline(
     model=model,
     tokenizer=processor.tokenizer,
     feature_extractor=processor.feature_extractor,
-    max_new_tokens=128,
+    max_new_tokens=256,
     chunk_length_s=30,
-    batch_size=16,
+    batch_size=64,
     return_timestamps=False,
     torch_dtype=torch_dtype,
     device=device,
@@ -34,6 +37,8 @@ pipe = pipeline(
 
 
 def similar(a, b):
+    a = re.sub(r'[^\w\s]', '', a)
+    b = re.sub(r'[^\w\s]', '', b)
     return SequenceMatcher(None, a, b).ratio() >= 0.95
 
 
@@ -136,14 +141,15 @@ print(cv, voxpopuli)
 
 audios = [voxpopuli[i]["audio"]["path"] for i in range(len(voxpopuli))]
 transcript = []
-with torch.autocast(enabled=True, dtype=torch.float16, device_type="cuda"):
+with torch.autocast(enabled=True, dtype=torch.bfloat16, device_type="cuda"):
     with torch.inference_mode():
-        batch_size = 8
+        batch_size = 16
         for i in tqdm(range(0, len(audios), batch_size)):
             batch_audios = audios[i:i+batch_size]
-            batch_results = pipe(batch_audios)
+            batch_results = pipe(batch_audios, generate_kwargs={"language": "de", "task": "transcribe"},)
             for result in batch_results:
-                transcript.append(result["text"])
+                #print(result)
+                transcript.append(result["text"].strip())
 
 # add the transcriptions to the dataset and filter
 voxpopuli = voxpopuli.add_column("canary_labels", transcript)
@@ -167,9 +173,6 @@ cv = cv.map(normalize_text)
 
 print(cv)
 
-cv = cv.cast_column("audio", datasets.Audio(sampling_rate=16000, decode=False))
-
-
+cv = cv.cast_column("audio", datasets.Audio(sampling_rate=16000, decode=True))
 cv.save_to_disk("asr-german-mixed")
-
 cv.push_to_hub("flozi00/asr-german-mixed")
