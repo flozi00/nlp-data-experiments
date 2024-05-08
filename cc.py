@@ -1,6 +1,5 @@
 import textdescriptives as td
 import de_dep_news_trf
-import time
 import requests
 import json
 from urllib.parse import quote_plus
@@ -18,7 +17,6 @@ nlp.add_pipe("textdescriptives/information_theory")
 
 # The URL of the Common Crawl Index server
 CC_INDEX_SERVER = "http://index.commoncrawl.org/"
-
 # The Common Crawl index you want to query
 INDEX_NAME = "CC-MAIN-2024-18"  # Replace with the latest index name
 
@@ -53,8 +51,23 @@ def fetch_page_from_cc(records):
             yield None
 
 
+def fetch_wikipedia():
+    wk = datasets.load_dataset(
+        "olm/wikipedia",
+        language="de",
+        date="20240420",
+        trust_remote_code=True,
+        cache_dir="volume_ds_cache",
+        split="train",
+    )
+    print("Loaded Wikipedia dataset")
+    for entry in wk:
+        yield entry["text"]
+
+
 urls = [
-    "flexikon.doccheck.com/*",
+    # "flexikon.doccheck.com/*",
+    "de.wikipedia.org/*",
     # "tagesschau.de/*",
 ]
 
@@ -62,43 +75,48 @@ for url in urls:
     data_dict = {"content": []}
     checkpointer = 0
     # Search the index for the target URL
-    records = search_cc_index(url)
-    if records:
-        print(f"Found {len(records)} records for {url}")
-        time.sleep(3)
+    if url == "de.wikipedia.org/*":
+        records = ["dummy"]
+    else:
+        records = search_cc_index(url)
+    print(f"Found {len(records)} records for {url}")
+    if url == "de.wikipedia.org/*":
+        contents = fetch_wikipedia()
+    else:
         contents = fetch_page_from_cc(records)
-        for content in tqdm(contents):
-            if content:
+    for content in tqdm(contents):
+        if content:
+            if url == "de.wikipedia.org/*":
+                markdown = content
+            else:
                 with io.BytesIO(content) as stream:
                     for record in warcio.ArchiveIterator(stream):
                         markdown = md(
                             record.content_stream().read(), strip=["a", "img"]
                         )
-                        markdown = markdown.split("\n" * 4)
-                        filtered = []
-                        for text in markdown:
-                            doc = nlp(text)
-                            stats = td.extract_df(doc).to_dict()
-                            metric = stats["entropy"][0]
-                            if metric >= 0.5:
-                                filtered.append(text)
-                        markdown = "\n".join(filtered)
+            markdown = markdown.split("\n" * 2)
+            filtered = []
+            for text in markdown:
+                doc = nlp(text)
+                stats = td.extract_df(doc).to_dict()
+                metric = stats["entropy"][0]
+                if metric >= 0.5:
+                    filtered.append(text)
+            markdown = "\n".join(filtered)
 
-                        if len(markdown) >= 512 and len(markdown) <= 12000:
-                            data_dict["content"].append(markdown)
-                            checkpointer += 1
-                            if checkpointer % 100 == 0:
-                                ds = datasets.Dataset.from_dict(data_dict)
-                                ds.push_to_hub(
-                                    "flozi00/german_knowledge",
-                                    split=url.replace("/", "").replace("*", ""),
-                                    private=True,
-                                )
-        ds = datasets.Dataset.from_dict(data_dict)
-        ds.push_to_hub(
-            "flozi00/german_knowledge",
-            split=url.replace("/", "").replace("*", ""),
-            private=True,
-        )
-    else:
-        print(f"No records found for {url}")
+            if len(markdown) >= 512 and len(markdown) <= 12000:
+                data_dict["content"].append(markdown)
+                checkpointer += 1
+                if checkpointer % 1000 == 0:
+                    ds = datasets.Dataset.from_dict(data_dict)
+                    ds.push_to_hub(
+                        "flozi00/german_knowledge",
+                        split=url.replace("/", "").replace("*", ""),
+                        private=True,
+                    )
+    ds = datasets.Dataset.from_dict(data_dict)
+    ds.push_to_hub(
+        "flozi00/german_knowledge",
+        split=url.replace("/", "").replace("*", ""),
+        private=True,
+    )
