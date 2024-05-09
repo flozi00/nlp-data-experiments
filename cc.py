@@ -114,7 +114,7 @@ for url in urls:
                     filtered.append(text)
             markdown = "\n".join(filtered)
 
-            if len(markdown) >= 512 and len(markdown) <= 12000:
+            if len(markdown) >= 512:
                 data_dict["content"].append(markdown)
                 checkpointer += 1
                 pbar.set_description(f"{checkpointer} pages processed")
