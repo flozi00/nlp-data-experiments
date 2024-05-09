@@ -5,10 +5,10 @@ import json
 from urllib.parse import quote_plus
 import io
 import warcio
-from markdownify import markdownify as md
 from tqdm import tqdm
 import datasets
 import warnings
+from trafilatura import extract
 
 warnings.filterwarnings("ignore")
 
@@ -66,8 +66,8 @@ def fetch_wikipedia():
 
 
 urls = [
-    # "flexikon.doccheck.com/*",
-    "de.wikipedia.org/*",
+    "flexikon.doccheck.com/*",
+    # "de.wikipedia.org/*",
     # "tagesschau.de/*",
 ]
 
@@ -79,34 +79,45 @@ for url in urls:
         records = ["dummy"]
     else:
         records = search_cc_index(url)
+        print("Searched Common Crawl Index")
     print(f"Found {len(records)} records for {url}")
     if url == "de.wikipedia.org/*":
         contents = fetch_wikipedia()
     else:
         contents = fetch_page_from_cc(records)
-    for content in tqdm(contents):
+
+    pbar = tqdm(contents)
+    for content in pbar:
         if content:
             if url == "de.wikipedia.org/*":
                 markdown = content
             else:
                 with io.BytesIO(content) as stream:
                     for record in warcio.ArchiveIterator(stream):
-                        markdown = md(
-                            record.content_stream().read(), strip=["a", "img"]
+                        page: str = record.content_stream().read()
+                        markdown = extract(
+                            page,
+                            target_language="de",
+                            favor_precision=True,
+                            favor_recall=True,
+                            include_comments=False,
                         )
-            markdown = markdown.split("\n" * 2)
+            if markdown is None:
+                continue
+            markdown = markdown.split("\n")
             filtered = []
             for text in markdown:
                 doc = nlp(text)
                 stats = td.extract_df(doc).to_dict()
                 metric = stats["entropy"][0]
-                if metric >= 0.5:
+                if metric >= 0.3:
                     filtered.append(text)
             markdown = "\n".join(filtered)
 
             if len(markdown) >= 512 and len(markdown) <= 12000:
                 data_dict["content"].append(markdown)
                 checkpointer += 1
+                pbar.set_description(f"{checkpointer} pages processed")
                 if checkpointer % 1000 == 0:
                     ds = datasets.Dataset.from_dict(data_dict)
                     ds.push_to_hub(
