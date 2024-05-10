@@ -1,3 +1,4 @@
+import time
 import textdescriptives as td
 import de_dep_news_trf
 import requests
@@ -116,13 +117,14 @@ for url in urls:
         for content in pbar:
             if content:
                 markdown = None
-                if url == "de.wikihow.com":
-                    page = trafilatura.fetch_url(content)
-                else:
+                if "*" in url:
                     content = fetch_page_from_cc(content)
                     with io.BytesIO(content) as stream:
                         for record in warcio.ArchiveIterator(stream):
                             page: str = record.content_stream().read()
+                else:
+                    page = trafilatura.fetch_url(content)
+                    time.sleep(1)
 
                 markdown = trafilatura.extract(
                     page,
