@@ -167,3 +167,4 @@ output/*
 *.json
 
 volume_*
+*.cache.*
