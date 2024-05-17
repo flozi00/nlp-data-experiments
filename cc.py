@@ -74,6 +74,29 @@ def fetch_wikipedia():
     return wk
 
 
+def fetch_wikinews():
+    dsets = []
+    print("Loading Wikinews dataset")
+    ds = datasets.load_dataset(
+        "malteos/wikinews",
+        "de",
+        download_mode="reuse_dataset_if_exists",
+        cache_dir="volume_ds_cache",
+        streaming=False,
+    )
+    splits = ds.keys()
+    for split in splits:
+        wn = ds[split]
+        column_names = [col for col in wn.column_names if col != "cleaned_text"]
+        wn = wn.rename_column("cleaned_text", "content")
+        wn = wn.remove_columns(column_names=column_names)
+        dsets.append(wn)
+
+    wn = datasets.concatenate_datasets(dsets)
+    print(wn)
+    return wn
+
+
 # use trafilatura to fetch sitemap
 def fetch_sitemap(domain):
     domain = f"https://{domain}/sitemap.xml"
@@ -90,7 +113,9 @@ urls = [
     # "tagesschau.de/wirtschaft/*",
     # "tagesschau.de/wissen/*",
     # "de.wikinews.org/*",
-    "de.wikihow.com",
+    # "de.wikihow.com",
+    # "correctiv.org",
+    # "de.wikinews.org",
 ]
 
 for url in urls:
@@ -106,12 +131,25 @@ for url in urls:
             max_shard_size="5GB",
         )
         continue
+    elif url == "de.wikinews.org":
+        ds = (
+            fetch_wikinews()
+            .filter(lambda x: len(x["content"]) >= 512)
+            .cast_column("content", datasets.Value("string"))
+        )
+        ds.push_to_hub(
+            "flozi00/german_knowledge",
+            split=url.replace("/", "").replace("*", ""),
+            private=True,
+            max_shard_size="5GB",
+        )
     else:
         if "*" in url:
             records = search_cc_index(url)
+            print("Searched Common Crawl Index")
         else:
             records = fetch_sitemap(url)
-        print("Searched Common Crawl Index")
+            print("Fetched sitemap")
         print(f"Found {len(records)} records for {url}")
         pbar = tqdm(records)
         for content in pbar:
@@ -124,7 +162,6 @@ for url in urls:
                             page: str = record.content_stream().read()
                 else:
                     page = trafilatura.fetch_url(content)
-                    time.sleep(1)
 
                 markdown = trafilatura.extract(
                     page,
@@ -134,6 +171,7 @@ for url in urls:
                     include_comments=False,
                 )
                 if markdown is None:
+                    time.sleep(3)
                     continue
                 markdown = markdown.split("\n")
                 filtered = []
@@ -149,14 +187,18 @@ for url in urls:
                     data_dict["content"].append(markdown)
                     checkpointer += 1
                     pbar.set_description(f"{checkpointer} pages processed")
-                    if checkpointer % 100 == 0:
+                    if checkpointer % 1000 == 0:
                         ds = datasets.Dataset.from_dict(data_dict)
                         ds.push_to_hub(
                             "flozi00/german_knowledge",
                             split=url.replace("/", "").replace("*", ""),
                             private=True,
                         )
-    ds = datasets.Dataset.from_dict(data_dict)
+                else:
+                    time.sleep(3)
+    ds = datasets.Dataset.from_dict(data_dict).cast_column(
+        "content", datasets.Value("string")
+    )
     ds.push_to_hub(
         "flozi00/german_knowledge",
         split=url.replace("/", "").replace("*", ""),
