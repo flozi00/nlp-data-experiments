@@ -12,12 +12,11 @@ import datasets
 import warnings
 import trafilatura
 from filecache import filecache
-
+from fundus import Crawler
+from fundus.publishers.base_objects import PublisherSpec, PublisherEnum  # noqa: F401
+from fundus.publishers.de import DE  # noqa: F401
 
 warnings.filterwarnings("ignore")
-
-nlp = de_dep_news_trf.load()
-nlp.add_pipe("textdescriptives/information_theory")
 
 # The URL of the Common Crawl Index server
 CC_INDEX_SERVER = "http://index.commoncrawl.org/"
@@ -97,6 +96,17 @@ def fetch_wikinews():
     return wn
 
 
+@filecache(365 * 24 * 60 * 60)
+def fetch_fundus(collection):
+    crawler = Crawler(collection)
+    ds_data = {"content": []}
+    for record in tqdm(crawler.crawl()):
+        if record:
+            ds_data["content"].append(str(record.body))
+    ds = datasets.Dataset.from_dict(ds_data)
+    return ds
+
+
 # use trafilatura to fetch sitemap
 def fetch_sitemap(domain):
     domain = f"https://{domain}/sitemap.xml"
@@ -112,18 +122,22 @@ urls = [
     # "tagesschau.de/ausland/*",
     # "tagesschau.de/wirtschaft/*",
     # "tagesschau.de/wissen/*",
-    # "de.wikinews.org/*",
     # "de.wikihow.com",
     # "correctiv.org",
     # "de.wikinews.org",
+    # "scinexx.de",
+    # "efahrer.chip.de",
 ]
+
+fundus_specs = [prov for prov in DE]
+urls += fundus_specs
 
 for url in urls:
     data_dict = {"content": []}
     checkpointer = 0
     # Search the index for the target URL
     if url == "de.wikipedia.org":
-        ds = fetch_wikipedia()
+        ds: datasets.Dataset = fetch_wikipedia()
         ds.push_to_hub(
             "flozi00/german_knowledge",
             split=url.replace("/", "").replace("*", ""),
@@ -132,7 +146,7 @@ for url in urls:
         )
         continue
     elif url == "de.wikinews.org":
-        ds = (
+        ds: datasets.Dataset = (
             fetch_wikinews()
             .filter(lambda x: len(x["content"]) >= 512)
             .cast_column("content", datasets.Value("string"))
@@ -143,7 +157,17 @@ for url in urls:
             private=True,
             max_shard_size="5GB",
         )
+    elif isinstance(url, PublisherEnum):
+        ds = fetch_fundus(url)
+        ds.push_to_hub(
+            "flozi00/german_knowledge",
+            split=url.name,
+            private=True,
+            max_shard_size="5GB",
+        )
     else:
+        nlp = de_dep_news_trf.load()
+        nlp.add_pipe("textdescriptives/information_theory")
         if "*" in url:
             records = search_cc_index(url)
             print("Searched Common Crawl Index")
@@ -196,12 +220,12 @@ for url in urls:
                         )
                 else:
                     time.sleep(3)
-    ds = datasets.Dataset.from_dict(data_dict).cast_column(
-        "content", datasets.Value("string")
-    )
-    ds.push_to_hub(
-        "flozi00/german_knowledge",
-        split=url.replace("/", "").replace("*", ""),
-        private=True,
-        max_shard_size="5GB",
-    )
+        ds = datasets.Dataset.from_dict(data_dict).cast_column(
+            "content", datasets.Value("string")
+        )
+        ds.push_to_hub(
+            "flozi00/german_knowledge",
+            split=url.replace("/", "").replace("*", ""),
+            private=True,
+            max_shard_size="5GB",
+        )
