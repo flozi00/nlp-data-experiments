@@ -170,3 +170,7 @@ volume_*
 *.cache.*
 
 *_ds_cache*
+
+audiodata*
+
+*.jsonl
