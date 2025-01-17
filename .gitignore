@@ -174,3 +174,5 @@ volume_*
 audiodata*
 
 *.jsonl
+
+logging*

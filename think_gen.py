@@ -189,12 +189,10 @@ import os
 import datasets
 from openai import OpenAI
 
-client = OpenAI(
-    base_url=os.getenv("OAI_BASE_URL"),
-    api_key=os.getenv("OAI_KEY"),
-)
+client = OpenAI()
 
 MODEL_TO_USE = "meta-llama/Llama-3.3-70B-Instruct"
+MODEL_TO_USE = "model"
 
 try:
     os.mkdir("logging")
@@ -249,7 +247,7 @@ def think_about(prompt: str):
             model=MODEL_TO_USE,
             messages=messages,
             temperature=0.1,
-            max_tokens=512,
+            max_tokens=1024,
         )
         step = completion.choices[0].message.content
         step_list.append(step)
@@ -285,6 +283,7 @@ def think_about(prompt: str):
             yield step
 
         if "<answer>" in step:
+            yield step
             with open(f"logging/{msg_hash}.json", "w+") as f:
                 f.write(
                     json.dumps(
@@ -299,25 +298,49 @@ def think_about(prompt: str):
             break
 
 
+def get_prompt_example(context_input):
+    msgs = [
+        {
+            "role": "system",
+            "content": """Du bist ein Fragengenerator für Universitätsprofessoren.
+Deine Aufgabe ist es einen Text vom Nutzer zu nehmen und sehr komplexe, nicht offensichtlich zu beantwortende Fragen zu erstellen.
+Die Antwort für die von dir erstellten Fragen muss aus mehreren Informationen des Textes vom Nutzer abgeleitet werden.
+Der Grad der Komplexität sollte Universitätslevel haben und mehrschrittige Argumentationen beinhalten.
+Jede Frage muss mit einer eindeutig nachprüfbaren Antwort beantwortet werden können.
+Du darfst nur mit der Frage antworten und keine weiteren Informationen geben.
+
+Beispiele für die komplexität der Fragen:
+- Welche Partei hat die längste Zeit den Kanzler gestellt und wieviele Jahren waren das ?
+- Wenn ich 3 Kerzen von selber Länge gleichzeitig anzünde und am Ende 3 unterschiedliche Längen habe, welche habe ich zuerst ausgepustet ? Kerze 1 hat 5cm Länge, Kerze 2 hat 7cm Länge und Kerze 3 hat 2cm Länge.
+- Klassifiziere die gegebenen Elemente in verschiedene Kategorien und erkläre die Gründe für die Zuordnung. Wähle aus den folgenden Kateogrien: [Kategorie 1], [Kategorie 2], [Kategorie 3].
+- Zeige die Zusammenhänge zwischen allen Personen auf und erkläre in welchem Verhältnis sie zueinander stehen. Liste alle Beziehungen für jede Person schritt für Schritt auf.
+- Welche Sicherheiten kann die Bank bei einem Kredit verlangen und wie wirkt sich dies auf die Kreditwürdigkeit aus wenn diese jeweils wegfallen? Liste die Sicherheiten auf und erkläre deren Auswirkungen auf die Kreditwürdigkeit.
+- Welche technischen Herausforderungen und Nachteile hatte die Heinkel He 119, die sie letztendlich für eine militärische Verwendung ungeeignet machten, und wie versuchte Heinkel, diese Probleme zu überwinden oder das Flugzeug für andere Zwecke zu adaptieren? Welche Funktionen hätte man sich von den Konkurrenzmodellen übernehmen können, um die He 119 zu verbessern?""",
+        },
+        {
+            "role": "user",
+            "content": context_input,
+        },
+    ]
+
+    response = client.chat.completions.create(
+        messages=msgs,
+        model=MODEL_TO_USE,
+        temperature=0.1,
+    )
+
+    result = response.choices[0].message.content
+    return result
+
+
 ds = datasets.load_dataset(
-    "argilla/synthetic-concise-reasoning-sft-filtered", split="train"
-)
+    "flozi00/Fineweb2-German-Eduscore-4andMore", split="train", streaming=True
+).filter(lambda x: len(x["text"]) < 10_000)
 
-for data in ds:
-    print(data["prompt"])
-    for step in think_about(data["prompt"]):
-        print(step)
-
-    break
-
-QUESTIONS = [
-    "Anna hat 5 Schwestern, jede Schwester hat einen Bruder. Wieviele Kinder hat Annas Mutter?",
-    "Ein Bauer hat 17 Schafe, alle sterben bis auf 9. Wieviele Schafe hat der Bauer noch?",
-    "Ein Vater hat 5 Söhne, jeder Sohn hat eine Schwester. Wieviele Kinder hat der Vater?",
-    "Wenn ich 3 Kerzen von selber Länge gleichzeitig anzünde, brennen sie unterschiedlich lang, weil ich sie unterschiedlich auspuste. Am Ende habe ich 3 unterschiedliche Kerzenlängen. Kerze 1 hat noch 8cm, Kerze 2 hat 12cm und Kerze 3 hat 2cm. Welche Kerze habe ich zuerst ausgepustet?",
-]
-
-for question in QUESTIONS:
+for example in ds:
+    question = get_prompt_example(example["text"])
     print(question)
-    for step in think_about(question):
+    for step in think_about(example["text"] + "\n\n" + question):
         print(step)
+
+    print("\n\n")
